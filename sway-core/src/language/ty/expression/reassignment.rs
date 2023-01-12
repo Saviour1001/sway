@@ -1,4 +1,8 @@
-use std::borrow::Cow;
+use std::{
+    any::Any,
+    borrow::Cow,
+    hash::{Hash, Hasher},
+};
 
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
@@ -21,6 +25,15 @@ impl PartialEqWithEngines for TyReassignment {
             && self.lhs_type == other.lhs_type
             && self.lhs_indices.eq(&other.lhs_indices, engines)
             && self.rhs.eq(&other.rhs, engines)
+    }
+}
+
+impl HashWithEngines for TyReassignment {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.lhs_base_name.hash(state);
+        type_engine.get(self.lhs_type).hash(state, type_engine);
+        self.lhs_indices.hash(state, type_engine);
+        self.rhs.hash(state, type_engine);
     }
 }
 
@@ -92,6 +105,25 @@ impl PartialEqWithEngines for ProjectionKind {
     }
 }
 
+impl HashWithEngines for ProjectionKind {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        match self {
+            ProjectionKind::StructField { name } => {
+                state.write_u8(1);
+                name.hash(state)
+            }
+            ProjectionKind::TupleField { index, .. } => {
+                state.write_u8(2);
+                index.hash(state)
+            }
+            ProjectionKind::ArrayIndex { index, .. } => {
+                state.write_u8(3);
+                index.hash(state, type_engine);
+            }
+        }
+    }
+}
+
 impl Spanned for ProjectionKind {
     fn span(&self) -> Span {
         match self {
@@ -126,6 +158,14 @@ impl PartialEqWithEngines for TyStorageReassignment {
         self.fields.eq(&other.fields, engines)
             && self.ix == other.ix
             && self.rhs.eq(&other.rhs, engines)
+    }
+}
+
+impl HashWithEngines for TyStorageReassignment {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.fields.hash(state, type_engine);
+        self.ix.hash(state);
+        self.rhs.hash(state, type_engine);
     }
 }
 
@@ -168,5 +208,12 @@ impl PartialEqWithEngines for TyStorageReassignDescriptor {
             && type_engine
                 .get(self.type_id)
                 .eq(&type_engine.get(other.type_id), engines)
+    }
+}
+
+impl HashWithEngines for TyStorageReassignDescriptor {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.name.hash(state);
+        type_engine.get(self.type_id).hash(state, type_engine);
     }
 }

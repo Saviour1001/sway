@@ -77,3 +77,9 @@ impl SubstTypes for TypeArgument {
         self.type_id.subst(type_mapping, engines);
     }
 }
+
+impl SubstTypes2 for TypeArgument {
+    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.type_id.subst2(engines, subst_list);
+    }
+}

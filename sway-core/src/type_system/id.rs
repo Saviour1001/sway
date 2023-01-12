@@ -150,6 +150,14 @@ impl SubstTypes for TypeId {
     }
 }
 
+impl SubstTypes2 for TypeId {
+    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        if let Some(matching_id) = subst_list.find_match(engines, *self) {
+            *self = matching_id;
+        }
+    }
+}
+
 impl UnconstrainedTypeParameters for TypeId {
     fn type_parameter_is_unconstrained(
         &self,

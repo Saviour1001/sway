@@ -1,4 +1,7 @@
-use std::fmt::{self, Debug};
+use std::{
+    fmt::{self, Debug},
+    hash::Hasher,
+};
 
 use sway_types::{Ident, Span};
 
@@ -17,10 +20,19 @@ pub struct TyAstNode {
     pub(crate) span: Span,
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyAstNode {}
 impl PartialEqWithEngines for TyAstNode {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.content.eq(&other.content, engines)
+    }
+}
+
+impl HashWithEngines for TyAstNode {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.content.hash(state, type_engine);
     }
 }
 
@@ -230,6 +242,28 @@ impl PartialEqWithEngines for TyAstNodeContent {
             }
             (Self::SideEffect, Self::SideEffect) => true,
             _ => false,
+        }
+    }
+}
+
+impl HashWithEngines for TyAstNodeContent {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        match self {
+            TyAstNodeContent::Declaration(decl) => {
+                state.write_u8(1);
+                decl.hash(state, type_engine);
+            }
+            TyAstNodeContent::Expression(exp) => {
+                state.write_u8(2);
+                exp.hash(state, type_engine);
+            }
+            TyAstNodeContent::ImplicitReturnExpression(exp) => {
+                state.write_u8(3);
+                exp.hash(state, type_engine);
+            }
+            TyAstNodeContent::SideEffect => {
+                state.write_u8(4);
+            }
         }
     }
 }

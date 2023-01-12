@@ -1,3 +1,5 @@
+use std::hash::Hasher;
+
 use sway_error::error::CompileError;
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
 
@@ -14,6 +16,12 @@ impl EqWithEngines for TyStorageDeclaration {}
 impl PartialEqWithEngines for TyStorageDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.fields.eq(&other.fields, engines) && self.attributes == other.attributes
+    }
+}
+
+impl HashWithEngines for TyStorageDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.fields.hash(state, type_engine);
     }
 }
 

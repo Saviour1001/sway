@@ -1,3 +1,5 @@
+use std::hash::Hasher;
+
 use crate::{
     decl_engine::*, engine_threading::*, language::ty::*, type_system::*,
     types::DeterministicallyAborts,
@@ -8,10 +10,19 @@ pub struct TyCodeBlock {
     pub contents: Vec<TyAstNode>,
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyCodeBlock {}
 impl PartialEqWithEngines for TyCodeBlock {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.contents.eq(&other.contents, engines)
+    }
+}
+
+impl HashWithEngines for TyCodeBlock {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.contents.hash(state, type_engine);
     }
 }
 

@@ -43,16 +43,17 @@ impl TypeEngine {
     /// referring to that [TypeInfo].
     pub(crate) fn insert(&self, decl_engine: &DeclEngine, ty: TypeInfo) -> TypeId {
         let mut id_map = self.id_map.write().unwrap();
+        let engines = Engines::new(self, decl_engine);
 
         let hash_builder = id_map.hasher().clone();
         let ty_hash = make_hasher(&hash_builder, self)(&ty);
 
         let raw_entry = id_map
             .raw_entry_mut()
-            .from_hash(ty_hash, |x| x.eq(&ty, Engines::new(self, decl_engine)));
+            .from_hash(ty_hash, |x| x.eq(&ty, engines));
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
-            RawEntryMut::Vacant(_) if ty.can_change() => TypeId::new(self.slab.insert(ty)),
+            RawEntryMut::Vacant(_) if ty.can_change(engines) => TypeId::new(self.slab.insert(ty)),
             RawEntryMut::Vacant(v) => {
                 let type_id = TypeId::new(self.slab.insert(ty.clone()));
                 v.insert_with_hasher(ty_hash, ty, type_id, make_hasher(&hash_builder, self));

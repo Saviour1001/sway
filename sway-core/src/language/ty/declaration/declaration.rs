@@ -1,4 +1,7 @@
-use std::fmt;
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
@@ -28,19 +31,22 @@ pub enum TyDeclaration {
     StorageDeclaration(DeclId),
 }
 
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyDeclaration {}
 impl PartialEqWithEngines for TyDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         match (self, other) {
             (Self::VariableDeclaration(x), Self::VariableDeclaration(y)) => x.eq(y, engines),
-            (Self::ConstantDeclaration(x), Self::ConstantDeclaration(y)) => x.eq(y, engines),
-            (Self::FunctionDeclaration(x), Self::FunctionDeclaration(y)) => x.eq(y, engines),
-            (Self::TraitDeclaration(x), Self::TraitDeclaration(y)) => x.eq(y, engines),
-            (Self::StructDeclaration(x), Self::StructDeclaration(y)) => x.eq(y, engines),
-            (Self::EnumDeclaration(x), Self::EnumDeclaration(y)) => x.eq(y, engines),
-            (Self::ImplTrait(x), Self::ImplTrait(y)) => x.eq(y, engines),
-            (Self::AbiDeclaration(x), Self::AbiDeclaration(y)) => x.eq(y, engines),
-            (Self::StorageDeclaration(x), Self::StorageDeclaration(y)) => x.eq(y, engines),
+            (Self::ConstantDeclaration(x), Self::ConstantDeclaration(y)) => x == y,
+            (Self::FunctionDeclaration(x), Self::FunctionDeclaration(y)) => x == y,
+            (Self::TraitDeclaration(x), Self::TraitDeclaration(y)) => x == y,
+            (Self::StructDeclaration(x), Self::StructDeclaration(y)) => x == y,
+            (Self::EnumDeclaration(x), Self::EnumDeclaration(y)) => x == y,
+            (Self::ImplTrait(x), Self::ImplTrait(y)) => x == y,
+            (Self::AbiDeclaration(x), Self::AbiDeclaration(y)) => x == y,
+            (Self::StorageDeclaration(x), Self::StorageDeclaration(y)) => x == y,
             (
                 Self::GenericTypeForFunctionScope {
                     name: xn,
@@ -53,6 +59,57 @@ impl PartialEqWithEngines for TyDeclaration {
             ) => xn == yn && xti == yti,
             (Self::ErrorRecovery(x), Self::ErrorRecovery(y)) => x == y,
             _ => false,
+        }
+    }
+}
+
+impl HashWithEngines for TyDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        match self {
+            TyDeclaration::VariableDeclaration(decl) => {
+                state.write_u8(1);
+                decl.hash(state, type_engine);
+            }
+            TyDeclaration::ConstantDeclaration(decl_id) => {
+                state.write_u8(2);
+                decl_id.hash(state);
+            }
+            TyDeclaration::FunctionDeclaration(decl_id) => {
+                state.write_u8(3);
+                decl_id.hash(state);
+            }
+            TyDeclaration::TraitDeclaration(decl_id) => {
+                state.write_u8(4);
+                decl_id.hash(state);
+            }
+            TyDeclaration::StructDeclaration(decl_id) => {
+                state.write_u8(5);
+                decl_id.hash(state);
+            }
+            TyDeclaration::EnumDeclaration(decl_id) => {
+                state.write_u8(6);
+                decl_id.hash(state);
+            }
+            TyDeclaration::ImplTrait(decl_id) => {
+                state.write_u8(7);
+                decl_id.hash(state);
+            }
+            TyDeclaration::AbiDeclaration(decl_id) => {
+                state.write_u8(8);
+                decl_id.hash(state);
+            }
+            TyDeclaration::GenericTypeForFunctionScope { name, type_id } => {
+                state.write_u8(9);
+                name.hash(state);
+                type_engine.get(*type_id).hash(state, type_engine);
+            }
+            TyDeclaration::ErrorRecovery(_) => {
+                state.write_u8(10);
+            }
+            TyDeclaration::StorageDeclaration(decl_id) => {
+                state.write_u8(11);
+                decl_id.hash(state);
+            }
         }
     }
 }

@@ -1,14 +1,9 @@
-use std::fmt;
+use std::{fmt, hash::Hasher};
 
 use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
 
-use crate::{
-    engine_threading::*,
-    language::ty,
-    type_system::{SubstTypes, TypeSubstMap},
-    ReplaceSelfType, TypeId,
-};
+use crate::{engine_threading::*, language::ty, type_system::*};
 
 use super::{DeclMapping, ReplaceDecls, ReplaceFunctionImplementingType};
 
@@ -52,6 +47,52 @@ impl PartialEqWithEngines for DeclWrapper {
             (DeclWrapper::Constant(l), DeclWrapper::Constant(r)) => l.eq(r, engines),
             (DeclWrapper::Enum(l), DeclWrapper::Enum(r)) => l.eq(r, engines),
             _ => false,
+        }
+    }
+}
+
+impl HashWithEngines for DeclWrapper {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        match self {
+            DeclWrapper::Unknown => {
+                state.write_u8(1);
+            }
+            DeclWrapper::Function(decl) => {
+                state.write_u8(2);
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::Trait(decl) => {
+                state.write_u8(3);
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::TraitFn(decl) => {
+                state.write_u8(4);
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::ImplTrait(decl) => {
+                state.write_u8(5);
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::Struct(decl) => {
+                state.write_u8(6);
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::Storage(decl) => {
+                state.write_u8(7);
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::Abi(decl) => {
+                state.write_u8(8);
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::Constant(decl) => {
+                state.write_u8(9);
+                decl.hash(state, type_engine);
+            }
+            DeclWrapper::Enum(decl) => {
+                state.write_u8(10);
+                decl.hash(state, type_engine);
+            }
         }
     }
 }

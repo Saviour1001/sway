@@ -255,7 +255,7 @@ impl TyProgram {
                 let nested_types = check!(
                     main_return_type_info
                         .clone()
-                        .extract_nested_types(ty_engine, &main_func.return_type_span),
+                        .extract_nested_types(engines, &main_func.return_type_span),
                     vec![],
                     warnings,
                     errors

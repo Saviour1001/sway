@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, hash::Hasher};
 
 use sway_types::{Span, Spanned};
 
@@ -29,6 +29,13 @@ impl PartialEqWithEngines for TyExpression {
             && type_engine
                 .get(self.return_type)
                 .eq(&type_engine.get(other.return_type), engines)
+    }
+}
+
+impl HashWithEngines for TyExpression {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.expression.hash(state, type_engine);
+        type_engine.get(self.return_type).hash(state, type_engine);
     }
 }
 

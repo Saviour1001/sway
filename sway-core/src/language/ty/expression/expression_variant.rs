@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::{self, Write},
+    hash::{Hash, Hasher},
 };
 
 use sway_types::{state::StateIndex, Ident, Span};
@@ -358,7 +359,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => {
                 l_exp.eq(&**r_exp, engines)
             }
-            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => *l_exp == *r_exp,
+            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => l_exp.eq(r_exp, engines),
             (
                 Self::WhileLoop {
                     body: l_body,
@@ -370,6 +371,184 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 },
             ) => l_body.eq(r_body, engines) && l_condition.eq(r_condition, engines),
             _ => false,
+        }
+    }
+}
+
+impl HashWithEngines for TyExpressionVariant {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        match self {
+            Self::Literal(lit) => {
+                state.write_u8(1);
+                lit.hash(state);
+            }
+            Self::FunctionApplication {
+                call_path,
+                arguments,
+                function_decl_id,
+                ..
+            } => {
+                state.write_u8(2);
+                call_path.hash(state);
+                function_decl_id.hash(state);
+                arguments.iter().for_each(|(name, arg)| {
+                    name.hash(state);
+                    arg.hash(state, type_engine);
+                });
+            }
+            Self::LazyOperator { op, lhs, rhs } => {
+                state.write_u8(3);
+                op.hash(state);
+                lhs.hash(state, type_engine);
+                rhs.hash(state, type_engine);
+            }
+            Self::VariableExpression {
+                name, mutability, ..
+            } => {
+                state.write_u8(4);
+                name.hash(state);
+                mutability.hash(state);
+            }
+            Self::Tuple { fields } => {
+                state.write_u8(5);
+                fields.hash(state, type_engine);
+            }
+            Self::Array { contents } => {
+                state.write_u8(6);
+                contents.hash(state, type_engine);
+            }
+            Self::ArrayIndex { prefix, index } => {
+                state.write_u8(7);
+                prefix.hash(state, type_engine);
+                index.hash(state, type_engine);
+            }
+            Self::StructExpression {
+                struct_name,
+                fields,
+                ..
+            } => {
+                state.write_u8(8);
+                struct_name.hash(state);
+                fields.hash(state, type_engine);
+            }
+            Self::CodeBlock(contents) => {
+                state.write_u8(9);
+                contents.hash(state, type_engine);
+            }
+            Self::FunctionParameter => {
+                state.write_u8(10);
+            }
+            Self::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                state.write_u8(11);
+                condition.hash(state, type_engine);
+                then.hash(state, type_engine);
+                r#else.map(|x| x.hash(state, type_engine));
+            }
+            Self::AsmExpression {
+                registers,
+                body,
+                returns,
+                ..
+            } => {
+                state.write_u8(12);
+                registers.hash(state, type_engine);
+                body.hash(state);
+                returns.hash(state);
+            }
+            Self::StructFieldAccess {
+                prefix,
+                field_to_access,
+                resolved_type_of_parent,
+                ..
+            } => {
+                state.write_u8(13);
+                prefix.hash(state, type_engine);
+                field_to_access.hash(state, type_engine);
+                type_engine
+                    .get(*resolved_type_of_parent)
+                    .hash(state, type_engine);
+            }
+            Self::TupleElemAccess {
+                prefix,
+                elem_to_access_num,
+                resolved_type_of_parent,
+                ..
+            } => {
+                state.write_u8(14);
+                prefix.hash(state, type_engine);
+                elem_to_access_num.hash(state);
+                type_engine
+                    .get(*resolved_type_of_parent)
+                    .hash(state, type_engine);
+            }
+            Self::EnumInstantiation {
+                enum_decl,
+                variant_name,
+                tag,
+                contents,
+                ..
+            } => {
+                state.write_u8(15);
+                enum_decl.hash(state, type_engine);
+                variant_name.hash(state);
+                tag.hash(state);
+                contents.map(|x| x.hash(state, type_engine));
+            }
+            Self::AbiCast {
+                abi_name, address, ..
+            } => {
+                state.write_u8(16);
+                abi_name.hash(state);
+                address.hash(state, type_engine);
+            }
+            Self::StorageAccess(exp) => {
+                state.write_u8(17);
+                exp.hash(state, type_engine);
+            }
+            Self::IntrinsicFunction(exp) => {
+                state.write_u8(18);
+                exp.hash(state, type_engine);
+            }
+            Self::AbiName(name) => {
+                state.write_u8(19);
+                name.hash(state);
+            }
+            Self::EnumTag { exp } => {
+                state.write_u8(20);
+                exp.hash(state, type_engine);
+            }
+            Self::UnsafeDowncast { exp, variant } => {
+                state.write_u8(21);
+                exp.hash(state, type_engine);
+                variant.hash(state, type_engine);
+            }
+            Self::WhileLoop { condition, body } => {
+                state.write_u8(22);
+                condition.hash(state, type_engine);
+                body.hash(state, type_engine);
+            }
+            Self::Break => {
+                state.write_u8(23);
+            }
+            Self::Continue => {
+                state.write_u8(24);
+            }
+            Self::Reassignment(exp) => {
+                state.write_u8(25);
+                exp.hash(state, type_engine);
+            }
+            Self::StorageReassignment(exp) => {
+                state.write_u8(26);
+                exp.hash(state, type_engine);
+            }
+            Self::Return(exp) => {
+                state.write_u8(27);
+                exp.hash(state, type_engine);
+            }
         }
     }
 }

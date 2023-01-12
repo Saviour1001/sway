@@ -18,8 +18,8 @@ impl EqWithEngines for TyAbiDeclaration {}
 impl PartialEqWithEngines for TyAbiDeclaration {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
         self.name == other.name
-        && self.interface_surface.eq(&other.interface_surface, engines)
-        && self.methods.eq(&other.methods, engines)
+        && self.interface_surface == other.interface_surface
+        && self.methods == other.methods
         // span ignored
         && self.attributes == other.attributes
     }

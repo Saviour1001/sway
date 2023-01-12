@@ -1,4 +1,4 @@
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 
 use sway_error::error::CompileError;
 use sway_types::{Span, Spanned};
@@ -19,7 +19,7 @@ pub struct TraitConstraint {
 }
 
 impl HashWithEngines for TraitConstraint {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.trait_name.hash(state);
         self.type_arguments.hash(state, type_engine);
     }
@@ -43,6 +43,14 @@ impl SubstTypes for TraitConstraint {
         self.type_arguments
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
+    }
+}
+
+impl SubstTypes2 for TraitConstraint {
+    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.type_arguments
+            .iter_mut()
+            .for_each(|x| x.subst2(engines, subst_list));
     }
 }
 

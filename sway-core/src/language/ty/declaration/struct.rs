@@ -28,6 +28,15 @@ impl PartialEqWithEngines for TyStructDeclaration {
     }
 }
 
+impl HashWithEngines for TyStructDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.name.hash(state);
+        self.fields.hash(state, type_engine);
+        self.type_parameters.hash(state, type_engine);
+        self.visibility.hash(state);
+    }
+}
+
 impl SubstTypes for TyStructDeclaration {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.fields

@@ -1,5 +1,6 @@
 use super::*;
 use crate::{
+    decl_engine::DeclId,
     engine_threading::*,
     language::{ty, CallPath},
     Ident,
@@ -89,12 +90,17 @@ pub enum TypeInfo {
     /// The equivalent type in the Rust compiler is:
     /// https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_type_ir/sty.rs.html#208
     Placeholder(TypeParameter),
+    /// Represents a type created from a type parameter. The argument to this
+    /// variant is an index into a [TypeSubstList](super::TypeSubstList).
+    // https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Param
+    TypeParam(usize),
     Str(Length),
     UnsignedInteger(IntegerBits),
+    // https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Adt
     Enum {
         name: Ident,
-        type_parameters: Vec<TypeParameter>,
-        variant_types: Vec<ty::TyEnumVariant>,
+        def_id: DeclId,
+        subst_list: TypeSubstList,
     },
     Struct {
         name: Ident,
@@ -173,13 +179,13 @@ impl HashWithEngines for TypeInfo {
             }
             TypeInfo::Enum {
                 name,
-                variant_types,
-                type_parameters,
+                def_id,
+                subst_list,
             } => {
                 state.write_u8(7);
                 name.hash(state);
-                variant_types.hash(state, type_engine);
-                type_parameters.hash(state, type_engine);
+                def_id.hash(state);
+                subst_list.hash(state, type_engine);
             }
             TypeInfo::Struct {
                 name,
@@ -247,6 +253,10 @@ impl HashWithEngines for TypeInfo {
                 state.write_u8(20);
                 ty.hash(state, type_engine);
             }
+            TypeInfo::TypeParam(n) => {
+                state.write_u8(21);
+                n.hash(state);
+            }
         }
     }
 }
@@ -292,19 +302,15 @@ impl PartialEqWithEngines for TypeInfo {
             (
                 Self::Enum {
                     name: l_name,
-                    variant_types: l_variant_types,
-                    type_parameters: l_type_parameters,
+                    def_id: l_def_id,
+                    subst_list: l_subst_list,
                 },
                 Self::Enum {
                     name: r_name,
-                    variant_types: r_variant_types,
-                    type_parameters: r_type_parameters,
+                    def_id: r_def_id,
+                    subst_list: r_subst_list,
                 },
-            ) => {
-                l_name == r_name
-                    && l_variant_types.eq(r_variant_types, engines)
-                    && l_type_parameters.eq(r_type_parameters, engines)
-            }
+            ) => l_name == r_name && l_def_id == r_def_id && l_subst_list.eq(r_subst_list, engines),
             (
                 Self::Struct {
                     name: l_name,
@@ -367,10 +373,12 @@ impl Default for TypeInfo {
 impl DisplayWithEngines for TypeInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         use TypeInfo::*;
+        let decl_engine = engines.de();
         let s = match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
+            TypeParam(n) => format!("typeparam({})", n),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -395,13 +403,20 @@ impl DisplayWithEngines for TypeInfo {
             ErrorRecovery => "unknown due to error".into(),
             Enum {
                 name,
-                type_parameters,
-                ..
-            } => print_inner_types(
-                engines,
-                name.as_str().to_string(),
-                type_parameters.iter().map(|x| x.type_id),
-            ),
+                def_id,
+                subst_list,
+            } => {
+                let decl = decl_engine
+                    .get_enum(def_id.clone(), &name.span())
+                    .expect("unknown enum");
+                decl.subst2(engines, subst_list);
+                let type_parameters = decl.type_parameters;
+                print_inner_types(
+                    engines,
+                    name.as_str().to_string(),
+                    type_parameters.iter().map(|x| x.type_id),
+                )
+            }
             Struct {
                 name,
                 type_parameters,
@@ -439,6 +454,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
+        let decl_engine = engines.de();
         let type_parameter_info = type_engine.get(type_parameter.type_id);
         match self {
             TypeInfo::UnknownGeneric {
@@ -457,11 +473,16 @@ impl UnconstrainedTypeParameters for TypeInfo {
                         .any(|x| x)
             }
             TypeInfo::Enum {
-                type_parameters,
-                variant_types,
-                ..
+                name,
+                def_id,
+                subst_list,
             } => {
-                let unconstrained_in_type_parameters = type_parameters
+                let decl = decl_engine
+                    .get_enum(def_id.clone(), &name.span())
+                    .expect("unknown enum");
+                decl.subst2(engines, subst_list);
+                let unconstrained_in_type_parameters = decl
+                    .type_parameters
                     .iter()
                     .map(|type_param| {
                         type_param
@@ -469,7 +490,8 @@ impl UnconstrainedTypeParameters for TypeInfo {
                             .type_parameter_is_unconstrained(engines, type_parameter)
                     })
                     .any(|x| x);
-                let unconstrained_in_variants = variant_types
+                let unconstrained_in_variants = decl
+                    .variants
                     .iter()
                     .map(|variant| {
                         variant
@@ -535,7 +557,8 @@ impl UnconstrainedTypeParameters for TypeInfo {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Storage { .. }
-            | TypeInfo::Placeholder(_) => false,
+            | TypeInfo::Placeholder(_)
+            | TypeInfo::TypeParam(_) => false,
         }
     }
 }
@@ -546,7 +569,8 @@ impl TypeInfo {
         match self {
             Unknown => "unknown".into(),
             UnknownGeneric { name, .. } => name.to_string(),
-            TypeInfo::Placeholder(_) => "_".to_string(),
+            Placeholder(_) => "_".to_string(),
+            TypeParam(n) => format!("typeparam({})", n),
             Str(x) => format!("str[{}]", x.val()),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
@@ -590,10 +614,12 @@ impl TypeInfo {
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         error_msg_span: &Span,
     ) -> CompileResult<String> {
         use TypeInfo::*;
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
         let name = match self {
             Str(len) => format!("str[{}]", len.val()),
             UnsignedInteger(bits) => {
@@ -616,7 +642,7 @@ impl TypeInfo {
                             type_engine
                                 .to_typeinfo(field_type.type_id, error_msg_span)
                                 .expect("unreachable?")
-                                .to_selector_name(type_engine, error_msg_span)
+                                .to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -645,7 +671,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -666,7 +692,7 @@ impl TypeInfo {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -686,19 +712,24 @@ impl TypeInfo {
                 }
             }
             Enum {
-                variant_types,
-                type_parameters,
-                ..
+                name,
+                def_id,
+                subst_list,
             } => {
+                let decl = decl_engine
+                    .get_enum(def_id.clone(), &name.span())
+                    .expect("unknown enum");
+                decl.subst2(engines, subst_list);
                 let variant_names = {
-                    let names = variant_types
+                    let names = decl
+                        .variants
                         .iter()
                         .map(|ty| {
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -712,14 +743,15 @@ impl TypeInfo {
                 };
 
                 let type_arguments = {
-                    let type_arguments = type_parameters
+                    let type_arguments = decl
+                        .type_parameters
                         .iter()
                         .map(|ty| {
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
-                            ty.to_selector_name(type_engine, error_msg_span)
+                            ty.to_selector_name(engines, error_msg_span)
                         })
                         .collect::<Vec<CompileResult<String>>>();
                     let mut buf = vec![];
@@ -744,7 +776,7 @@ impl TypeInfo {
             Array(elem_ty, length) => {
                 let name = type_engine
                     .get(elem_ty.type_id)
-                    .to_selector_name(type_engine, error_msg_span);
+                    .to_selector_name(engines, error_msg_span);
                 let name = match name.value {
                     Some(name) => name,
                     None => return name,
@@ -765,13 +797,26 @@ impl TypeInfo {
         ok(name, vec![], vec![])
     }
 
-    pub fn is_uninhabited(&self, type_engine: &TypeEngine) -> bool {
-        let id_uninhabited = |id| type_engine.get(id).is_uninhabited(type_engine);
+    pub fn is_uninhabited(&self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
+
+        let id_uninhabited = |id| type_engine.get(id).is_uninhabited(engines);
 
         match self {
-            TypeInfo::Enum { variant_types, .. } => variant_types
-                .iter()
-                .all(|variant_type| id_uninhabited(variant_type.type_id)),
+            TypeInfo::Enum {
+                name,
+                def_id,
+                subst_list,
+            } => {
+                let decl = decl_engine
+                    .get_enum(def_id.clone(), &name.span())
+                    .expect("unknown enum");
+                decl.subst2(engines, subst_list);
+                decl.variants
+                    .iter()
+                    .all(|variant_type| id_uninhabited(variant_type.type_id))
+            }
             TypeInfo::Struct { fields, .. } => {
                 fields.iter().any(|field| id_uninhabited(field.type_id))
             }
@@ -783,16 +828,26 @@ impl TypeInfo {
         }
     }
 
-    pub fn is_zero_sized(&self, type_engine: &TypeEngine) -> bool {
+    pub fn is_zero_sized(&self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
         match self {
-            TypeInfo::Enum { variant_types, .. } => {
+            TypeInfo::Enum {
+                name,
+                def_id,
+                subst_list,
+            } => {
+                let decl = decl_engine
+                    .get_enum(def_id.clone(), &name.span())
+                    .expect("unknown enum");
+                decl.subst2(engines, subst_list);
                 let mut found_unit_variant = false;
-                for variant_type in variant_types {
+                for variant_type in decl.variants {
                     let type_info = type_engine.get(variant_type.type_id);
-                    if type_info.is_uninhabited(type_engine) {
+                    if type_info.is_uninhabited(engines) {
                         continue;
                     }
-                    if type_info.is_zero_sized(type_engine) && !found_unit_variant {
+                    if type_info.is_zero_sized(engines) && !found_unit_variant {
                         found_unit_variant = true;
                         continue;
                     }
@@ -804,10 +859,10 @@ impl TypeInfo {
                 let mut all_zero_sized = true;
                 for field in fields {
                     let type_info = type_engine.get(field.type_id);
-                    if type_info.is_uninhabited(type_engine) {
+                    if type_info.is_uninhabited(engines) {
                         return true;
                     }
-                    if !type_info.is_zero_sized(type_engine) {
+                    if !type_info.is_zero_sized(engines) {
                         all_zero_sized = false;
                     }
                 }
@@ -817,37 +872,35 @@ impl TypeInfo {
                 let mut all_zero_sized = true;
                 for field in fields {
                     let field_type = type_engine.get(field.type_id);
-                    if field_type.is_uninhabited(type_engine) {
+                    if field_type.is_uninhabited(engines) {
                         return true;
                     }
-                    if !field_type.is_zero_sized(type_engine) {
+                    if !field_type.is_zero_sized(engines) {
                         all_zero_sized = false;
                     }
                 }
                 all_zero_sized
             }
             TypeInfo::Array(elem_ty, length) => {
-                length.val() == 0 || type_engine.get(elem_ty.type_id).is_zero_sized(type_engine)
+                length.val() == 0 || type_engine.get(elem_ty.type_id).is_zero_sized(engines)
             }
             _ => false,
         }
     }
 
-    pub fn can_safely_ignore(&self, type_engine: &TypeEngine) -> bool {
-        if self.is_zero_sized(type_engine) {
+    pub fn can_safely_ignore(&self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
+        if self.is_zero_sized(engines) {
             return true;
         }
         match self {
             TypeInfo::Tuple(fields) => fields.iter().all(|type_argument| {
                 type_engine
                     .get(type_argument.type_id)
-                    .can_safely_ignore(type_engine)
+                    .can_safely_ignore(engines)
             }),
             TypeInfo::Array(elem_ty, length) => {
-                length.val() == 0
-                    || type_engine
-                        .get(elem_ty.type_id)
-                        .can_safely_ignore(type_engine)
+                length.val() == 0 || type_engine.get(elem_ty.type_id).can_safely_ignore(engines)
             }
             TypeInfo::ErrorRecovery => true,
             TypeInfo::Unknown => true,
@@ -918,7 +971,8 @@ impl TypeInfo {
             | TypeInfo::ErrorRecovery
             | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
-            | TypeInfo::Placeholder(_) => {
+            | TypeInfo::Placeholder(_)
+            | TypeInfo::TypeParam(_) => {
                 errors.push(CompileError::TypeArgumentsNotAllowed { span: span.clone() });
                 err(warnings, errors)
             }
@@ -927,28 +981,34 @@ impl TypeInfo {
 
     /// Given a `TypeInfo` `self`, analyze `self` and return all inner
     /// `TypeId`'s of `self`, not including `self`.
-    pub(crate) fn extract_inner_types(&self, type_engine: &TypeEngine) -> HashSet<TypeId> {
+    pub(crate) fn extract_inner_types(&self, engines: Engines<'_>) -> HashSet<TypeId> {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
         let helper = |type_id: TypeId| {
             let mut inner_types = HashSet::new();
             match type_engine.get(type_id) {
                 TypeInfo::Enum {
-                    type_parameters,
-                    variant_types,
-                    ..
+                    name,
+                    def_id,
+                    subst_list,
                 } => {
                     inner_types.insert(type_id);
-                    for type_param in type_parameters.iter() {
+                    let decl = decl_engine
+                        .get_enum(def_id.clone(), &name.span())
+                        .expect("unknown enum");
+                    decl.subst2(engines, &subst_list);
+                    for type_param in decl.type_parameters.iter() {
                         inner_types.extend(
                             type_engine
                                 .get(type_param.type_id)
-                                .extract_inner_types(type_engine),
+                                .extract_inner_types(engines),
                         );
                     }
-                    for variant in variant_types.iter() {
+                    for variant in decl.variants.iter() {
                         inner_types.extend(
                             type_engine
                                 .get(variant.type_id)
-                                .extract_inner_types(type_engine),
+                                .extract_inner_types(engines),
                         );
                     }
                 }
@@ -962,15 +1022,12 @@ impl TypeInfo {
                         inner_types.extend(
                             type_engine
                                 .get(type_param.type_id)
-                                .extract_inner_types(type_engine),
+                                .extract_inner_types(engines),
                         );
                     }
                     for field in fields.iter() {
-                        inner_types.extend(
-                            type_engine
-                                .get(field.type_id)
-                                .extract_inner_types(type_engine),
-                        );
+                        inner_types
+                            .extend(type_engine.get(field.type_id).extract_inner_types(engines));
                     }
                 }
                 TypeInfo::Custom { type_arguments, .. } => {
@@ -980,33 +1037,27 @@ impl TypeInfo {
                             inner_types.extend(
                                 type_engine
                                     .get(type_arg.type_id)
-                                    .extract_inner_types(type_engine),
+                                    .extract_inner_types(engines),
                             );
                         }
                     }
                 }
                 TypeInfo::Array(elem_ty, _) => {
                     inner_types.insert(elem_ty.type_id);
-                    inner_types.extend(type_engine.get(type_id).extract_inner_types(type_engine));
+                    inner_types.extend(type_engine.get(type_id).extract_inner_types(engines));
                 }
                 TypeInfo::Tuple(elems) => {
                     inner_types.insert(type_id);
                     for elem in elems.iter() {
-                        inner_types.extend(
-                            type_engine
-                                .get(elem.type_id)
-                                .extract_inner_types(type_engine),
-                        );
+                        inner_types
+                            .extend(type_engine.get(elem.type_id).extract_inner_types(engines));
                     }
                 }
                 TypeInfo::Storage { fields } => {
                     inner_types.insert(type_id);
                     for field in fields.iter() {
-                        inner_types.extend(
-                            type_engine
-                                .get(field.type_id)
-                                .extract_inner_types(type_engine),
-                        );
+                        inner_types
+                            .extend(type_engine.get(field.type_id).extract_inner_types(engines));
                     }
                 }
                 TypeInfo::Unknown
@@ -1021,7 +1072,8 @@ impl TypeInfo {
                 | TypeInfo::RawUntypedPtr
                 | TypeInfo::RawUntypedSlice
                 | TypeInfo::Contract
-                | TypeInfo::Placeholder(_) => {
+                | TypeInfo::Placeholder(_)
+                | TypeInfo::TypeParam(_) => {
                     inner_types.insert(type_id);
                 }
                 TypeInfo::ErrorRecovery => {}
@@ -1032,14 +1084,18 @@ impl TypeInfo {
         let mut inner_types = HashSet::new();
         match self {
             TypeInfo::Enum {
-                type_parameters,
-                variant_types,
-                ..
+                name,
+                def_id,
+                subst_list,
             } => {
-                for type_param in type_parameters.iter() {
+                let decl = decl_engine
+                    .get_enum(def_id.clone(), &name.span())
+                    .expect("unknown enum");
+                decl.subst2(engines, &subst_list);
+                for type_param in decl.type_parameters.iter() {
                     inner_types.extend(helper(type_param.type_id));
                 }
-                for variant in variant_types.iter() {
+                for variant in decl.variants.iter() {
                     inner_types.extend(helper(variant.type_id));
                 }
             }
@@ -1088,13 +1144,15 @@ impl TypeInfo {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::ErrorRecovery
-            | TypeInfo::Placeholder(_) => {}
+            | TypeInfo::Placeholder(_)
+            | TypeInfo::TypeParam(_) => {}
         }
         inner_types
     }
 
     /// Given a `TypeInfo` `self`, check to see if `self` is currently
-    /// supported in match expressions, and return an error if it is not.
+    /// supported as the primary expression in match expressions, and return an
+    /// error if it is not.
     pub(crate) fn expect_is_supported_in_match_expressions(
         &self,
         span: &Span,
@@ -1108,7 +1166,6 @@ impl TypeInfo {
             | TypeInfo::Boolean
             | TypeInfo::Tuple(_)
             | TypeInfo::B256
-            | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric => ok((), warnings, errors),
             TypeInfo::Unknown
             | TypeInfo::RawUntypedPtr
@@ -1120,7 +1177,9 @@ impl TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
-            | TypeInfo::Placeholder(_) => {
+            | TypeInfo::UnknownGeneric { .. }
+            | TypeInfo::Placeholder(_)
+            | TypeInfo::TypeParam(_) => {
                 errors.push(CompileError::Unimplemented(
                     "matching on this type is unsupported right now",
                     span.clone(),
@@ -1158,7 +1217,8 @@ impl TypeInfo {
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::SelfType
             | TypeInfo::Storage { .. }
-            | TypeInfo::Placeholder(_) => {
+            | TypeInfo::Placeholder(_)
+            | TypeInfo::TypeParam(_) => {
                 errors.push(CompileError::Unimplemented(
                     "implementing traits on this type is unsupported right now",
                     span.clone(),
@@ -1176,34 +1236,42 @@ impl TypeInfo {
     /// `TypeInfo`'s found in `self`, including `self`.
     pub(crate) fn extract_nested_types(
         self,
-        type_engine: &TypeEngine,
+        engines: Engines<'_>,
         span: &Span,
     ) -> CompileResult<Vec<TypeInfo>> {
         let mut warnings = vec![];
         let mut errors = vec![];
+
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
+
         let mut all_nested_types = vec![self.clone()];
         match self {
             TypeInfo::Enum {
-                variant_types,
-                type_parameters,
-                ..
+                name,
+                def_id,
+                subst_list,
             } => {
-                for type_parameter in type_parameters.iter() {
+                let decl = decl_engine
+                    .get_enum(def_id.clone(), &name.span())
+                    .expect("unknown enum");
+                decl.subst2(engines, &subst_list);
+                for type_parameter in decl.type_parameters.iter() {
                     let mut nested_types = check!(
                         type_engine
                             .get(type_parameter.type_id)
-                            .extract_nested_types(type_engine, span),
+                            .extract_nested_types(engines, span),
                         return err(warnings, errors),
                         warnings,
                         errors
                     );
                     all_nested_types.append(&mut nested_types);
                 }
-                for variant_type in variant_types.iter() {
+                for variant_type in decl.variants.iter() {
                     let mut nested_types = check!(
                         type_engine
                             .get(variant_type.type_id)
-                            .extract_nested_types(type_engine, span),
+                            .extract_nested_types(engines, span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1220,7 +1288,7 @@ impl TypeInfo {
                     let mut nested_types = check!(
                         type_engine
                             .get(type_parameter.type_id)
-                            .extract_nested_types(type_engine, span),
+                            .extract_nested_types(engines, span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1231,7 +1299,7 @@ impl TypeInfo {
                     let mut nested_types = check!(
                         type_engine
                             .get(field.type_id)
-                            .extract_nested_types(type_engine, span),
+                            .extract_nested_types(engines, span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1244,7 +1312,7 @@ impl TypeInfo {
                     let mut nested_types = check!(
                         type_engine
                             .get(type_argument.type_id)
-                            .extract_nested_types(type_engine, span),
+                            .extract_nested_types(engines, span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1256,7 +1324,7 @@ impl TypeInfo {
                 let mut nested_types = check!(
                     type_engine
                         .get(elem_ty.type_id)
-                        .extract_nested_types(type_engine, span),
+                        .extract_nested_types(engines, span),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1268,7 +1336,7 @@ impl TypeInfo {
                     let mut nested_types = check!(
                         type_engine
                             .get(field.type_id)
-                            .extract_nested_types(type_engine, span),
+                            .extract_nested_types(engines, span),
                         return err(warnings, errors),
                         warnings,
                         errors
@@ -1284,7 +1352,7 @@ impl TypeInfo {
                         let mut nested_types = check!(
                             type_engine
                                 .get(type_arg.type_id)
-                                .extract_nested_types(type_engine, span),
+                                .extract_nested_types(engines, span),
                             return err(warnings, errors),
                             warnings,
                             errors
@@ -1303,7 +1371,8 @@ impl TypeInfo {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Contract
-            | TypeInfo::Placeholder(_) => {}
+            | TypeInfo::Placeholder(_)
+            | TypeInfo::TypeParam(_) => {}
             TypeInfo::Custom { .. } | TypeInfo::SelfType => {
                 errors.push(CompileError::Internal(
                     "did not expect to find this type here",
@@ -1327,7 +1396,7 @@ impl TypeInfo {
         let mut warnings = vec![];
         let mut errors = vec![];
         let nested_types = check!(
-            self.clone().extract_nested_types(engines.te(), span),
+            self.clone().extract_nested_types(engines, span),
             return err(warnings, errors),
             warnings,
             errors
@@ -1488,33 +1557,25 @@ impl TypeInfo {
             (
                 Self::Enum {
                     name: l_name,
-                    variant_types: l_variant_types,
-                    type_parameters: l_type_parameters,
+                    def_id: l_def_id,
+                    subst_list: l_subst_list,
                 },
                 Self::Enum {
                     name: r_name,
-                    variant_types: r_variant_types,
-                    type_parameters: r_type_parameters,
+                    def_id: r_def_id,
+                    subst_list: r_subst_list,
                 },
             ) => {
-                let l_names = l_variant_types
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let r_names = r_variant_types
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let l_types = l_type_parameters
+                let l_types = l_subst_list
                     .iter()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
-                let r_types = r_type_parameters
+                let r_types = r_subst_list
                     .iter()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 l_name == r_name
-                    && l_names == r_names
+                    && l_def_id == r_def_id
                     && types_are_subset_of(engines, &l_types, &r_types)
             }
             (
@@ -1627,13 +1688,17 @@ impl TypeInfo {
         }
     }
 
-    pub(crate) fn can_change(&self) -> bool {
+    pub(crate) fn can_change(&self, engines: Engines<'_>) -> bool {
+        let decl_engine = engines.de();
         // TODO: there might be an optimization here that if the type params hold
         // only non-dynamic types, then it doesn't matter that there are type params
         match self {
-            TypeInfo::Enum {
-                type_parameters, ..
-            } => !type_parameters.is_empty(),
+            TypeInfo::Enum { name, def_id, .. } => {
+                let decl = decl_engine
+                    .get_enum(def_id.clone(), &name.span())
+                    .expect("unknown enum");
+                !decl.type_parameters.is_empty()
+            }
             TypeInfo::Struct {
                 type_parameters, ..
             } => !type_parameters.is_empty(),
@@ -1654,15 +1719,22 @@ impl TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::Storage { .. }
             | TypeInfo::Numeric
-            | TypeInfo::Placeholder(_) => true,
+            | TypeInfo::Placeholder(_)
+            | TypeInfo::TypeParam(_) => true,
         }
     }
 
     /// Checks if a given [TypeInfo] has a valid constructor.
-    pub(crate) fn has_valid_constructor(&self) -> bool {
+    pub(crate) fn has_valid_constructor(&self, engines: Engines<'_>) -> bool {
+        let decl_engine = engines.de();
         match self {
             TypeInfo::Unknown => false,
-            TypeInfo::Enum { variant_types, .. } => !variant_types.is_empty(),
+            TypeInfo::Enum { name, def_id, .. } => {
+                let decl = decl_engine
+                    .get_enum(def_id.clone(), &name.span())
+                    .expect("unknown enum");
+                !decl.variants.is_empty()
+            }
             _ => true,
         }
     }
@@ -1706,11 +1778,7 @@ impl TypeInfo {
         let warnings = vec![];
         let errors = vec![];
         match self {
-            TypeInfo::Enum {
-                name,
-                variant_types,
-                ..
-            } => ok((name, variant_types), warnings, errors),
+            TypeInfo::Enum { .. } => todo!(),
             TypeInfo::ErrorRecovery => err(warnings, errors),
             a => err(
                 vec![],

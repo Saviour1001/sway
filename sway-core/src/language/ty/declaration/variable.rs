@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::{Ident, Span};
 
 use crate::{engine_threading::*, language::ty::*, type_system::*};
@@ -28,6 +30,18 @@ impl PartialEqWithEngines for TyVariableDeclaration {
             && type_engine
                 .get(self.type_ascription)
                 .eq(&type_engine.get(other.type_ascription), engines)
+    }
+}
+
+impl HashWithEngines for TyVariableDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.name.hash(state);
+        self.body.hash(state, type_engine);
+        type_engine.get(self.return_type).hash(state, type_engine);
+        type_engine
+            .get(self.type_ascription)
+            .hash(state, type_engine);
+        self.mutability.hash(state);
     }
 }
 

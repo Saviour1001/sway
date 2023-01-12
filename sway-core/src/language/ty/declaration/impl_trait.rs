@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::Span;
 
 use crate::{decl_engine::DeclId, engine_threading::*, language::CallPath, type_system::*};
@@ -16,16 +18,29 @@ pub struct TyImplTrait {
 impl EqWithEngines for TyImplTrait {}
 impl PartialEqWithEngines for TyImplTrait {
     fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        let type_engine = engines.te();
         self.impl_type_parameters
             .eq(&other.impl_type_parameters, engines)
             && self.trait_name == other.trait_name
             && self
                 .trait_type_arguments
                 .eq(&other.trait_type_arguments, engines)
-            && self.methods.eq(&other.methods, engines)
-            && self.implementing_for_type_id == other.implementing_for_type_id
-            && self.type_implementing_for_span == other.type_implementing_for_span
-            && self.span == other.span
+            && self.methods == other.methods
+            && type_engine
+                .get(self.implementing_for_type_id)
+                .eq(&type_engine.get(other.implementing_for_type_id), engines)
+    }
+}
+
+impl HashWithEngines for TyImplTrait {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.trait_name.hash(state);
+        self.impl_type_parameters.hash(state, type_engine);
+        self.trait_type_arguments.hash(state, type_engine);
+        self.methods.hash(state);
+        type_engine
+            .get(self.implementing_for_type_id)
+            .hash(state, type_engine);
     }
 }
 

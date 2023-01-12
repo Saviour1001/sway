@@ -62,6 +62,15 @@ impl SubstTypes for TypeParameter {
     }
 }
 
+impl SubstTypes2 for TypeParameter {
+    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.type_id.subst2(engines, subst_list);
+        self.trait_constraints
+            .iter_mut()
+            .for_each(|x| x.subst2(engines, subst_list));
+    }
+}
+
 impl ReplaceSelfType for TypeParameter {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.type_id.replace_self_type(engines, self_type);

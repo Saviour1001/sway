@@ -28,6 +28,15 @@ impl PartialEqWithEngines for TyEnumDeclaration {
     }
 }
 
+impl HashWithEngines for TyEnumDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.name.hash(state);
+        self.variants.hash(state, type_engine);
+        self.type_parameters.hash(state, type_engine);
+        self.visibility.hash(state);
+    }
+}
+
 impl SubstTypes for TyEnumDeclaration {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.variants
@@ -36,6 +45,17 @@ impl SubstTypes for TyEnumDeclaration {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
+    }
+}
+
+impl SubstTypes2 for TyEnumDeclaration {
+    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.variants
+            .iter_mut()
+            .for_each(|x| x.subst2(engines, subst_list));
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.subst2(engines, subst_list));
     }
 }
 
@@ -146,6 +166,12 @@ impl PartialEqWithEngines for TyEnumVariant {
 impl SubstTypes for TyEnumVariant {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_id.subst(type_mapping, engines);
+    }
+}
+
+impl SubstTypes2 for TyEnumVariant {
+    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.type_id.subst2(engines, subst_list);
     }
 }
 

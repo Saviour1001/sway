@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::Ident;
 
 use crate::{engine_threading::*, language::ty::*, type_system::*};
@@ -19,6 +21,13 @@ impl PartialEqWithEngines for TyAsmRegisterDeclaration {
             } else {
                 true
             }
+    }
+}
+
+impl HashWithEngines for TyAsmRegisterDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.name.hash(state);
+        self.initializer.map(|x| x.hash(state, type_engine));
     }
 }
 

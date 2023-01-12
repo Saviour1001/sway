@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use sha2::{Digest, Sha256};
 
 use crate::{
@@ -53,6 +55,19 @@ impl PartialEqWithEngines for TyFunctionDeclaration {
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
             && self.purity == other.purity
+    }
+}
+
+impl HashWithEngines for TyFunctionDeclaration {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.name.hash(state);
+        self.body.hash(state, type_engine);
+        self.parameters.hash(state, type_engine);
+        type_engine.get(self.return_type).hash(state, type_engine);
+        self.type_parameters.hash(state, type_engine);
+        self.visibility.hash(state);
+        self.is_contract_call.hash(state);
+        self.purity.hash(state);
     }
 }
 
@@ -235,15 +250,12 @@ impl TyFunctionDeclaration {
         }
     }
 
-    pub fn to_fn_selector_value_untruncated(
-        &self,
-        type_engine: &TypeEngine,
-    ) -> CompileResult<Vec<u8>> {
+    pub fn to_fn_selector_value_untruncated(&self, engines: Engines<'_>) -> CompileResult<Vec<u8>> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let mut hasher = Sha256::new();
         let data = check!(
-            self.to_selector_name(type_engine),
+            self.to_selector_name(engines),
             return err(warnings, errors),
             warnings,
             errors
@@ -256,11 +268,11 @@ impl TyFunctionDeclaration {
     /// Converts a [TyFunctionDeclaration] into a value that is to be used in contract function
     /// selectors.
     /// Hashes the name and parameters using SHA256, and then truncates to four bytes.
-    pub fn to_fn_selector_value(&self, type_engine: &TypeEngine) -> CompileResult<[u8; 4]> {
+    pub fn to_fn_selector_value(&self, engines: Engines<'_>) -> CompileResult<[u8; 4]> {
         let mut errors = vec![];
         let mut warnings = vec![];
         let hash = check!(
-            self.to_fn_selector_value_untruncated(type_engine),
+            self.to_fn_selector_value_untruncated(engines),
             return err(warnings, errors),
             warnings,
             errors
@@ -271,9 +283,10 @@ impl TyFunctionDeclaration {
         ok(buf, warnings, errors)
     }
 
-    pub fn to_selector_name(&self, type_engine: &TypeEngine) -> CompileResult<String> {
+    pub fn to_selector_name(&self, engines: Engines<'_>) -> CompileResult<String> {
         let mut errors = vec![];
         let mut warnings = vec![];
+        let type_engine = engines.te();
         let named_params = self
             .parameters
             .iter()
@@ -284,7 +297,7 @@ impl TyFunctionDeclaration {
                     type_engine
                         .to_typeinfo(*type_id, type_span)
                         .expect("unreachable I think?")
-                        .to_selector_name(type_engine, type_span)
+                        .to_selector_name(engines, type_span)
                 },
             )
             .filter_map(|name| name.ok(&mut warnings, &mut errors))
@@ -428,6 +441,14 @@ impl PartialEqWithEngines for TyFunctionParameter {
                 .get(self.type_id)
                 .eq(&type_engine.get(other.type_id), engines)
             && self.is_mutable == other.is_mutable
+    }
+}
+
+impl HashWithEngines for TyFunctionParameter {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.name.hash(state);
+        type_engine.get(self.type_id).hash(state, type_engine);
+        self.is_mutable.hash(state);
     }
 }
 

@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt};
+use std::{collections::BTreeMap, fmt, hash::Hasher, slice::Iter};
 
 use super::*;
 use crate::engine_threading::*;
@@ -10,6 +10,135 @@ pub(crate) trait SubstTypes {
         if !type_mapping.is_empty() {
             self.subst_inner(type_mapping, engines);
         }
+    }
+}
+
+pub(crate) trait SubstTypes2 {
+    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList);
+
+    fn subst2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        if !subst_list.is_empty() {
+            self.subst_inner2(engines, subst_list);
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct TypeSubstList {
+    list: Vec<TypeParameter>,
+}
+
+impl TypeSubstList {
+    pub(crate) fn new() -> TypeSubstList {
+        TypeSubstList { list: vec![] }
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.list.len()
+    }
+
+    pub(crate) fn push(&mut self, type_param: TypeParameter) {
+        self.list.push(type_param);
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.list.is_empty()
+    }
+
+    pub(crate) fn find_match(&self, engines: Engines<'_>, type_id: TypeId) -> Option<TypeId> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+        let type_engine = engines.te();
+        match type_engine.get(type_id) {
+            TypeInfo::TypeParam(n) if n < self.list.len() => ok(
+                self.list.get(n).map(|type_param| type_param.type_id),
+                warnings,
+                errors,
+            ),
+            TypeInfo::TypeParam(_) => panic!("tried an out of bounds substitution"),
+            _ => ok(None, warnings, errors),
+        }
+    }
+
+    pub(crate) fn iter(&self) -> Iter<'_, TypeParameter> {
+        self.list.iter()
+    }
+
+    // pub(crate) fn into_iter(self) -> IntoIter<TypeParameter> {
+    //     self.list.into_iter()
+    // }
+
+    // pub(crate) fn iter_mut(&mut self) -> IterMut<'_, TypeParameter> {
+    //     self.list.iter_mut()
+    // }
+}
+
+impl std::iter::FromIterator<TypeParameter> for TypeSubstList {
+    fn from_iter<T: IntoIterator<Item = TypeParameter>>(iter: T) -> Self {
+        TypeSubstList {
+            list: iter.into_iter().collect::<Vec<TypeParameter>>(),
+        }
+    }
+}
+
+// impl std::iter::IntoIterator for TypeSubstList {
+//     type Item = TypeParameter;
+//     type IntoIter = std::vec::IntoIter<TypeParameter>;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.list.into_iter()
+//     }
+// }
+
+impl EqWithEngines for TypeSubstList {}
+impl PartialEqWithEngines for TypeSubstList {
+    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+        self.len() == other.len()
+            && self
+                .list
+                .iter()
+                .zip(other.list.iter())
+                .map(|(x, y)| x.eq(y, engines))
+                .all(|x| x)
+    }
+}
+
+impl HashWithEngines for TypeSubstList {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.list.hash(state, type_engine);
+    }
+}
+
+impl SubstTypes for TypeSubstList {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
+        self.list
+            .iter_mut()
+            .for_each(|x| x.subst(type_mapping, engines));
+    }
+}
+
+impl ReplaceSelfType for TypeSubstList {
+    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
+        self.list
+            .iter_mut()
+            .for_each(|x| x.replace_self_type(engines, self_type));
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) struct TypeSubstStack(Vec<TypeSubstList>);
+
+impl TypeSubstStack {
+    pub(crate) fn peek(&self) -> Option<TypeSubstList> {
+        self.0.last().cloned()
+    }
+
+    pub(crate) fn push(&mut self, value: TypeSubstList) {
+        self.0.push(value);
+    }
+
+    pub(crate) fn pop(&mut self) -> Option<TypeSubstList> {
+        self.0.pop()
     }
 }
 
