@@ -83,11 +83,13 @@ impl HashWithEngines for DeclWrapper {
             }
             DeclWrapper::Abi(decl) => {
                 state.write_u8(8);
-                decl.hash(state, type_engine);
+                todo!();
+                // decl.hash(state, type_engine);
             }
             DeclWrapper::Constant(decl) => {
                 state.write_u8(9);
-                decl.hash(state, type_engine);
+                todo!();
+                // decl.hash(state, type_engine);
             }
             DeclWrapper::Enum(decl) => {
                 state.write_u8(10);

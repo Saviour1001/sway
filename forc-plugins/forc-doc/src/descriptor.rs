@@ -81,43 +81,44 @@ impl Descriptor {
                     }))
                 }
             }
-            EnumDeclaration(ref decl_id) => {
-                let enum_decl = decl_engine.get_enum(decl_id.clone(), &decl_id.span())?;
-                if !document_private_items && enum_decl.visibility.is_private() {
-                    Ok(Descriptor::NonDocumentable)
-                } else {
-                    let item_name = enum_decl.name;
-                    let (attrs_opt, raw_attributes) = match enum_decl.attributes.is_empty() {
-                        true => (None, None),
-                        false => (
-                            Some(enum_decl.attributes.to_html_string()),
-                            Some(enum_decl.attributes.to_raw_string()),
-                        ),
-                    };
-                    let context = (!enum_decl.variants.is_empty())
-                        .then_some(ContextType::EnumVariants(enum_decl.variants));
+            EnumDeclaration(_, _) => todo!(),
+            // EnumDeclaration(ref decl_id) => {
+            //     let enum_decl = decl_engine.get_enum(decl_id.clone(), &decl_id.span())?;
+            //     if !document_private_items && enum_decl.visibility.is_private() {
+            //         Ok(Descriptor::NonDocumentable)
+            //     } else {
+            //         let item_name = enum_decl.name;
+            //         let (attrs_opt, raw_attributes) = match enum_decl.attributes.is_empty() {
+            //             true => (None, None),
+            //             false => (
+            //                 Some(enum_decl.attributes.to_html_string()),
+            //                 Some(enum_decl.attributes.to_raw_string()),
+            //             ),
+            //         };
+            //         let context = (!enum_decl.variants.is_empty())
+            //             .then_some(ContextType::EnumVariants(enum_decl.variants));
 
-                    Ok(Descriptor::Documentable(Document {
-                        module_info: module_info.clone(),
-                        item_header: ItemHeader {
-                            module_info: module_info.clone(),
-                            friendly_name: ty_decl.friendly_name(),
-                            item_name: item_name.clone(),
-                        },
-                        item_body: ItemBody {
-                            module_info,
-                            ty_decl: ty_decl.clone(),
-                            item_name,
-                            code_str: parse::parse_format::<sway_ast::ItemEnum>(
-                                enum_decl.span.as_str(),
-                            ),
-                            attrs_opt,
-                            item_context: ItemContext { context },
-                        },
-                        raw_attributes,
-                    }))
-                }
-            }
+            //         Ok(Descriptor::Documentable(Document {
+            //             module_info: module_info.clone(),
+            //             item_header: ItemHeader {
+            //                 module_info: module_info.clone(),
+            //                 friendly_name: ty_decl.friendly_name(),
+            //                 item_name: item_name.clone(),
+            //             },
+            //             item_body: ItemBody {
+            //                 module_info,
+            //                 ty_decl: ty_decl.clone(),
+            //                 item_name,
+            //                 code_str: parse::parse_format::<sway_ast::ItemEnum>(
+            //                     enum_decl.span.as_str(),
+            //                 ),
+            //                 attrs_opt,
+            //                 item_context: ItemContext { context },
+            //             },
+            //             raw_attributes,
+            //         }))
+            //     }
+            // }
             TraitDeclaration(ref decl_id) => {
                 let trait_decl = decl_engine.get_trait(decl_id.clone(), &decl_id.span())?;
                 if !document_private_items && trait_decl.visibility.is_private() {

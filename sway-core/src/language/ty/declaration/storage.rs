@@ -1,4 +1,4 @@
-use std::hash::Hasher;
+use std::hash::{Hash, Hasher};
 
 use sway_error::error::CompileError;
 use sway_types::{state::StateIndex, Ident, Span, Spanned};
@@ -186,5 +186,13 @@ impl PartialEqWithEngines for TyStorageField {
                 .get(self.type_id)
                 .eq(&type_engine.get(other.type_id), engines)
             && self.initializer.eq(&other.initializer, engines)
+    }
+}
+
+impl HashWithEngines for TyStorageField {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        self.name.hash(state);
+        type_engine.get(self.type_id).hash(state, type_engine);
+        self.initializer.hash(state, type_engine);
     }
 }

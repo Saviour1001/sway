@@ -88,10 +88,15 @@ fn generic_enum_resolution() {
     let ty_1 = type_engine.insert(
         &decl_engine,
         TypeInfo::Enum {
-            name: result_name.clone(),
-            variant_types,
-            type_parameters: vec![placeholder_type_param],
+            name: todo!(),
+            decl_id: todo!(),
+            subst_list: todo!(),
         },
+        // TypeInfo::Enum {
+        //     name: result_name.clone(),
+        //     variant_types,
+        //     type_parameters: vec![placeholder_type_param],
+        // },
     );
 
     /*
@@ -119,30 +124,36 @@ fn generic_enum_resolution() {
     let ty_2 = type_engine.insert(
         &decl_engine,
         TypeInfo::Enum {
-            name: result_name,
-            variant_types,
-            type_parameters: vec![type_param],
+            name: todo!(),
+            decl_id: todo!(),
+            subst_list: todo!(),
         },
+        // TypeInfo::Enum {
+        //     name: result_name,
+        //     variant_types,
+        //     type_parameters: vec![type_param],
+        // },
     );
 
     // Unify them together...
     let (_, errors) = type_engine.unify(&decl_engine, ty_1, ty_2, &sp, "", None);
     assert!(errors.is_empty());
 
-    if let TypeInfo::Enum {
-        name,
-        variant_types,
-        ..
-    } = type_engine.get(ty_1)
-    {
-        assert_eq!(name.as_str(), "Result");
-        assert!(matches!(
-            type_engine.get(variant_types[0].type_id),
-            TypeInfo::Boolean
-        ));
-    } else {
-        panic!()
-    }
+    todo!();
+    // if let TypeInfo::Enum {
+    //     name,
+    //     variant_types,
+    //     ..
+    // } = type_engine.get(ty_1)
+    // {
+    //     assert_eq!(name.as_str(), "Result");
+    //     assert!(matches!(
+    //         type_engine.get(variant_types[0].type_id),
+    //         TypeInfo::Boolean
+    //     ));
+    // } else {
+    //     panic!()
+    // }
 }
 
 #[test]

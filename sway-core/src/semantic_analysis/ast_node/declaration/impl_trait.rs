@@ -38,22 +38,14 @@ impl ty::TyImplTrait {
         let mut impl_namespace = ctx.namespace.clone();
         let mut ctx = ctx.by_ref().scoped(&mut impl_namespace).allow_functions();
 
-        // type check the type parameters which also inserts them into the namespace
-        let mut new_impl_type_parameters = vec![];
-        for type_parameter in impl_type_parameters.into_iter() {
-            if !type_parameter.trait_constraints.is_empty() {
-                errors.push(CompileError::WhereClauseNotYetSupported {
-                    span: type_parameter.trait_constraints_span,
-                });
-                return err(warnings, errors);
-            }
-            new_impl_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
+        // Type check the type parameters, which will insert them into the
+        // namespace.
+        let (mut new_impl_type_parameters, _) = check!(
+            TypeParameter::type_check_type_parameters(ctx.by_ref(), impl_type_parameters, false),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // resolve the types of the trait type arguments
         for type_arg in trait_type_arguments.iter_mut() {
@@ -379,7 +371,7 @@ impl ty::TyImplTrait {
                 ty::TyDeclaration::FunctionDeclaration(_)
                 | ty::TyDeclaration::TraitDeclaration(_)
                 | ty::TyDeclaration::StructDeclaration(_)
-                | ty::TyDeclaration::EnumDeclaration(_)
+                | ty::TyDeclaration::EnumDeclaration(_, _)
                 | ty::TyDeclaration::ImplTrait(_)
                 | ty::TyDeclaration::AbiDeclaration(_)
                 | ty::TyDeclaration::GenericTypeForFunctionScope { .. }
@@ -454,25 +446,14 @@ impl ty::TyImplTrait {
             is_absolute: false,
         };
 
-        // type check the type parameters which also inserts them into the namespace
-        let mut new_impl_type_parameters = vec![];
-        for type_parameter in impl_type_parameters.into_iter() {
-            if !type_parameter.trait_constraints.is_empty() {
-                errors.push(CompileError::WhereClauseNotYetSupported {
-                    span: type_parameter.trait_constraints_span,
-                });
-                continue;
-            }
-            new_impl_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        if !errors.is_empty() {
-            return err(warnings, errors);
-        }
+        // Type check the type parameters, which will insert them into the
+        // namespace.
+        let (mut new_impl_type_parameters, _) = check!(
+            TypeParameter::type_check_type_parameters(ctx.by_ref(), impl_type_parameters, false),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
@@ -543,7 +524,7 @@ impl ty::TyImplTrait {
 
         let methods_ids = methods
             .iter()
-            .map(|d| decl_engine.insert(d.clone()))
+            .map(|d| decl_engine.insert(type_engine, d.clone()))
             .collect::<Vec<_>>();
 
         let impl_trait = ty::TyImplTrait {
@@ -576,6 +557,7 @@ fn type_check_trait_implementation(
     let mut errors = vec![];
     let mut warnings = vec![];
 
+    let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
     let self_type = ctx.self_type();
@@ -669,7 +651,7 @@ fn type_check_trait_implementation(
             errors
         );
         let name = impl_method.name.clone();
-        let decl_id = decl_engine.insert(impl_method);
+        let decl_id = decl_engine.insert(type_engine, impl_method);
 
         // Remove this method from the checklist.
         method_checklist.remove(&name);
@@ -711,7 +693,7 @@ fn type_check_trait_implementation(
         method.replace_self_type(engines, ctx.self_type());
         all_method_ids.push(
             decl_engine
-                .insert(method)
+                .insert(type_engine, method)
                 .with_parent(decl_engine, decl_id.clone()),
         );
     }

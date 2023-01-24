@@ -2,8 +2,9 @@ use std::{cmp::Ordering, fmt};
 
 use std::fmt::Write;
 use sway_error::error::CompileError;
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
+use crate::Engines;
 use crate::{error::*, language::ty, language::Literal, TypeInfo};
 
 use super::{patstack::PatStack, range::Range};
@@ -638,7 +639,8 @@ impl Pattern {
         }
     }
 
-    pub(crate) fn matches_type_info(&self, type_info: &TypeInfo) -> bool {
+    pub(crate) fn matches_type_info(&self, engines: Engines<'_>, type_info: &TypeInfo) -> bool {
+        let decl_engine = engines.de();
         match (self, type_info) {
             (
                 Pattern::Enum(EnumPattern {
@@ -648,12 +650,15 @@ impl Pattern {
                 }),
                 TypeInfo::Enum {
                     name: r_enum_name,
-                    variant_types,
+                    decl_id: def_id,
                     ..
                 },
             ) => {
                 l_enum_name.as_str() == r_enum_name.as_str()
-                    && variant_types
+                    && decl_engine
+                        .get_enum(def_id.clone(), &def_id.span())
+                        .map(|enum_decl| enum_decl.variants)
+                        .unwrap_or_default()
                         .iter()
                         .map(|variant_type| variant_type.name.clone())
                         .any(|name| name.as_str() == variant_name.as_str())

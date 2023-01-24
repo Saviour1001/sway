@@ -271,40 +271,41 @@ impl CollectTypesMetadata for TyExpression {
                     errors
                 ));
             }
-            EnumInstantiation {
-                enum_decl,
-                contents,
-                enum_instantiation_span,
-                ..
-            } => {
-                for type_param in enum_decl.type_parameters.iter() {
-                    ctx.call_site_insert(type_param.type_id, enum_instantiation_span.clone())
-                }
-                if let Some(contents) = contents {
-                    res.append(&mut check!(
-                        contents.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                for variant in enum_decl.variants.iter() {
-                    res.append(&mut check!(
-                        variant.type_id.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-                for type_param in enum_decl.type_parameters.iter() {
-                    res.append(&mut check!(
-                        type_param.type_id.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-            }
+            EnumInstantiation { .. } => todo!(),
+            // EnumInstantiation {
+            //     enum_decl,
+            //     contents,
+            //     enum_instantiation_span,
+            //     ..
+            // } => {
+            //     for type_param in enum_decl.type_parameters.iter() {
+            //         ctx.call_site_insert(type_param.type_id, enum_instantiation_span.clone())
+            //     }
+            //     if let Some(contents) = contents {
+            //         res.append(&mut check!(
+            //             contents.collect_types_metadata(ctx),
+            //             return err(warnings, errors),
+            //             warnings,
+            //             errors
+            //         ));
+            //     }
+            //     for variant in enum_decl.variants.iter() {
+            //         res.append(&mut check!(
+            //             variant.type_id.collect_types_metadata(ctx),
+            //             return err(warnings, errors),
+            //             warnings,
+            //             errors
+            //         ));
+            //     }
+            //     for type_param in enum_decl.type_parameters.iter() {
+            //         res.append(&mut check!(
+            //             type_param.type_id.collect_types_metadata(ctx),
+            //             return err(warnings, errors),
+            //             warnings,
+            //             errors
+            //         ));
+            //     }
+            // }
             AbiCast { address, .. } => {
                 res.append(&mut check!(
                     address.collect_types_metadata(ctx),

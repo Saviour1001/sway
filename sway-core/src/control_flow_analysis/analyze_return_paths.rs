@@ -185,7 +185,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         TraitDeclaration(_)
         | AbiDeclaration(_)
         | StructDeclaration(_)
-        | EnumDeclaration(_)
+        | EnumDeclaration(_, _)
         | StorageDeclaration(_)
         | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
         VariableDeclaration(_) | ConstantDeclaration(_) => {

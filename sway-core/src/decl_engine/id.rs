@@ -120,11 +120,12 @@ impl DeclId {
         type_mapping: &TypeSubstMap,
         engines: Engines<'_>,
     ) -> DeclId {
+        let type_engine = engines.te();
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self.clone());
         decl.subst(type_mapping, engines);
         decl_engine
-            .insert_wrapper(decl, self.1.clone())
+            .insert_wrapper(type_engine, decl, self.1.clone())
             .with_parent(decl_engine, self.clone())
     }
 
@@ -133,11 +134,12 @@ impl DeclId {
         engines: Engines<'_>,
         self_type: TypeId,
     ) -> DeclId {
+        let type_engine = engines.te();
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self.clone());
         decl.replace_self_type(engines, self_type);
         decl_engine
-            .insert_wrapper(decl, self.1.clone())
+            .insert_wrapper(type_engine, decl, self.1.clone())
             .with_parent(decl_engine, self.clone())
     }
 
@@ -146,11 +148,12 @@ impl DeclId {
         decl_mapping: &DeclMapping,
         engines: Engines<'_>,
     ) -> DeclId {
+        let type_engine = engines.te();
         let decl_engine = engines.de();
         let mut decl = decl_engine.get(self.clone());
         decl.replace_decls(decl_mapping, engines);
         decl_engine
-            .insert_wrapper(decl, self.1.clone())
+            .insert_wrapper(type_engine, decl, self.1.clone())
             .with_parent(decl_engine, self.clone())
     }
 }

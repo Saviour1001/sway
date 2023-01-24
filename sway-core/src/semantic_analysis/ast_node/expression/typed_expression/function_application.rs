@@ -19,6 +19,7 @@ pub(crate) fn instantiate_function_application(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
     let engines = ctx.engines();
 
@@ -86,7 +87,7 @@ pub(crate) fn instantiate_function_application(
     );
     function_decl.replace_decls(&decl_mapping, engines);
     let return_type = function_decl.return_type;
-    let new_decl_id = decl_engine.insert(function_decl);
+    let new_decl_id = decl_engine.insert(type_engine, function_decl);
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {

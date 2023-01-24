@@ -359,35 +359,36 @@ fn const_eval_typed_expr(
                 ))
             })
         }
-        ty::TyExpressionVariant::EnumInstantiation {
-            enum_decl,
-            tag,
-            contents,
-            ..
-        } => {
-            let aggregate =
-                create_enum_aggregate(lookup.type_engine, lookup.context, &enum_decl.variants);
-            if let Ok(enum_ty) = aggregate {
-                let tag_value = Constant::new_uint(lookup.context, 64, *tag as u64);
-                let mut fields: Vec<Constant> = vec![tag_value];
-                match contents {
-                    None => fields.push(Constant::new_unit(lookup.context)),
-                    Some(subexpr) => {
-                        let eval_expr = const_eval_typed_expr(lookup, known_consts, subexpr)?;
-                        eval_expr.into_iter().for_each(|enum_val| {
-                            fields.push(enum_val);
-                        })
-                    }
-                }
-                Some(Constant::new_struct(
-                    lookup.context,
-                    enum_ty.get_field_types(lookup.context),
-                    fields,
-                ))
-            } else {
-                None
-            }
-        }
+        ty::TyExpressionVariant::EnumInstantiation { .. } => todo!(),
+        // ty::TyExpressionVariant::EnumInstantiation {
+        //     enum_decl,
+        //     tag,
+        //     contents,
+        //     ..
+        // } => {
+        //     let aggregate =
+        //         create_enum_aggregate(lookup.type_engine, lookup.context, &enum_decl.variants);
+        //     if let Ok(enum_ty) = aggregate {
+        //         let tag_value = Constant::new_uint(lookup.context, 64, *tag as u64);
+        //         let mut fields: Vec<Constant> = vec![tag_value];
+        //         match contents {
+        //             None => fields.push(Constant::new_unit(lookup.context)),
+        //             Some(subexpr) => {
+        //                 let eval_expr = const_eval_typed_expr(lookup, known_consts, subexpr)?;
+        //                 eval_expr.into_iter().for_each(|enum_val| {
+        //                     fields.push(enum_val);
+        //                 })
+        //             }
+        //         }
+        //         Some(Constant::new_struct(
+        //             lookup.context,
+        //             enum_ty.get_field_types(lookup.context),
+        //             fields,
+        //         ))
+        //     } else {
+        //         None
+        //     }
+        // }
         ty::TyExpressionVariant::StructFieldAccess {
             prefix,
             field_to_access,

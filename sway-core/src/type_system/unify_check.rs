@@ -169,43 +169,44 @@ impl<'a> UnifyCheck<'a> {
                     .collect::<Vec<_>>();
                 l_name == r_name && self.check_multiple(&l_types, &r_types)
             }
-            // Let empty enums to coerce to any other type. This is useful for Never enum.
-            (
-                Enum {
-                    variant_types: rvs, ..
-                },
-                _,
-            ) if rvs.is_empty() => true,
-            (
-                Enum {
-                    name: l_name,
-                    variant_types: l_variant_types,
-                    type_parameters: l_type_parameters,
-                },
-                Enum {
-                    name: r_name,
-                    variant_types: r_variant_types,
-                    type_parameters: r_type_parameters,
-                },
-            ) => {
-                let l_names = l_variant_types
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let r_names = r_variant_types
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let l_types = l_type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                let r_types = r_type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                l_name == r_name && l_names == r_names && self.check_multiple(&l_types, &r_types)
-            }
+            (Enum { .. }, Enum { .. }) => todo!(),
+            // // Let empty enums to coerce to any other type. This is useful for Never enum.
+            // (
+            //     Enum {
+            //         variant_types: rvs, ..
+            //     },
+            //     _,
+            // ) if rvs.is_empty() => true,
+            // (
+            //     Enum {
+            //         name: l_name,
+            //         variant_types: l_variant_types,
+            //         type_parameters: l_type_parameters,
+            //     },
+            //     Enum {
+            //         name: r_name,
+            //         variant_types: r_variant_types,
+            //         type_parameters: r_type_parameters,
+            //     },
+            // ) => {
+            //     let l_names = l_variant_types
+            //         .iter()
+            //         .map(|x| x.name.clone())
+            //         .collect::<Vec<_>>();
+            //     let r_names = r_variant_types
+            //         .iter()
+            //         .map(|x| x.name.clone())
+            //         .collect::<Vec<_>>();
+            //     let l_types = l_type_parameters
+            //         .iter()
+            //         .map(|x| x.type_id)
+            //         .collect::<Vec<_>>();
+            //     let r_types = r_type_parameters
+            //         .iter()
+            //         .map(|x| x.type_id)
+            //         .collect::<Vec<_>>();
+            //     l_name == r_name && l_names == r_names && self.check_multiple(&l_types, &r_types)
+            // }
             (
                 Struct {
                     name: l_name,

@@ -1,8 +1,6 @@
 use core::fmt::Write;
-use core::hash::Hasher;
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
-use std::hash::BuildHasher;
 use std::sync::RwLock;
 
 use crate::concurrent_slab::ListDisplay;
@@ -22,20 +20,6 @@ pub struct TypeEngine {
     pub(super) slab: ConcurrentSlab<TypeInfo>,
     storage_only_types: ConcurrentSlab<TypeInfo>,
     id_map: RwLock<HashMap<TypeInfo, TypeId>>,
-}
-
-fn make_hasher<'a: 'b, 'b, K>(
-    hash_builder: &'a impl BuildHasher,
-    type_engine: &'b TypeEngine,
-) -> impl Fn(&K) -> u64 + 'b
-where
-    K: HashWithEngines + ?Sized,
-{
-    move |key: &K| {
-        let mut state = hash_builder.build_hasher();
-        key.hash(&mut state, type_engine);
-        state.finish()
-    }
 }
 
 impl TypeEngine {
@@ -445,22 +429,24 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDeclaration::EnumDeclaration(original_id)) => {
-                        // get the copy from the declaration engine
-                        let mut new_copy = check!(
-                            CompileResult::from(decl_engine.get_enum(original_id, &name.span())),
+                    Some(ty::TyDeclaration::EnumDeclaration(decl_id, type_subst_list)) => {
+                        // Get the copy from the declaration engine.
+                        let mut decl = check!(
+                            CompileResult::from(
+                                decl_engine.get_struct(decl_id.clone(), &name.span())
+                            ),
                             return err(warnings, errors),
                             warnings,
                             errors
                         );
 
-                        // monomorphize the copy, in place
+                        // Monomorphize the type subst list.
                         check!(
-                            self.monomorphize(
-                                decl_engine,
-                                &mut new_copy,
+                            type_subst_list.monomorphize(
+                                engines,
                                 &mut type_arguments.unwrap_or_default(),
                                 enforce_type_arguments,
+                                &decl.name,
                                 span,
                                 namespace,
                                 mod_path
@@ -470,13 +456,21 @@ impl TypeEngine {
                             errors
                         );
 
-                        // create the type id from the copy
-                        let type_id = new_copy.create_type_id(engines);
+                        // Create a new type id from the copy.
+                        let type_id = self.insert(
+                            decl_engine,
+                            TypeInfo::Enum {
+                                name: decl.name.clone(),
+                                decl_id,
+                                subst_list: type_subst_list,
+                            },
+                        );
 
-                        // take any trait methods that apply to this type and copy them to the new type
+                        // Take any trait methods that apply to this type and
+                        // copy them to the new type.
                         namespace.insert_trait_implementation_for_type(engines, type_id);
 
-                        // return the id
+                        // Return the id.
                         type_id
                     }
                     Some(ty::TyDeclaration::GenericTypeForFunctionScope { type_id, .. }) => type_id,

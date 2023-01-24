@@ -1,5 +1,7 @@
+use hashbrown::hash_map::RawEntryMut;
+use hashbrown::HashMap;
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashSet, VecDeque},
     fmt,
     sync::RwLock,
 };
@@ -12,12 +14,14 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty,
+    TypeEngine,
 };
 
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
 pub struct DeclEngine {
     slab: ConcurrentSlab<DeclWrapper>,
+    id_map: RwLock<HashMap<DeclWrapper, DeclId>>,
     parents: RwLock<HashMap<usize, Vec<DeclId>>>,
 }
 
@@ -39,16 +43,42 @@ impl DeclEngine {
         self.slab.replace(index, wrapper);
     }
 
-    pub(crate) fn insert<T>(&self, decl: T) -> DeclId
+    pub(crate) fn insert<T>(&self, type_engine: &TypeEngine, decl: T) -> DeclId
     where
         T: Into<(DeclWrapper, Span)>,
     {
         let (decl_wrapper, span) = decl.into();
-        DeclId::new(self.slab.insert(decl_wrapper), span)
+        self.insert_wrapper(type_engine, decl_wrapper, span)
     }
 
-    pub(crate) fn insert_wrapper(&self, decl_wrapper: DeclWrapper, span: Span) -> DeclId {
-        DeclId::new(self.slab.insert(decl_wrapper), span)
+    pub(crate) fn insert_wrapper(
+        &self,
+        type_engine: &TypeEngine,
+        decl_wrapper: DeclWrapper,
+        span: Span,
+    ) -> DeclId {
+        let mut id_map = self.id_map.write().unwrap();
+        let engines = Engines::new(type_engine, self);
+
+        let hash_builder = id_map.hasher().clone();
+        let decl_hash = make_hasher(&hash_builder, type_engine)(&decl_wrapper);
+
+        match id_map
+            .raw_entry_mut()
+            .from_hash(decl_hash, |x| x.eq(&decl_wrapper, engines))
+        {
+            RawEntryMut::Occupied(o) => o.get().clone(),
+            RawEntryMut::Vacant(v) => {
+                let decl_id = DeclId::new(self.slab.insert(decl_wrapper.clone()), span);
+                v.insert_with_hasher(
+                    decl_hash,
+                    decl_wrapper,
+                    decl_id.clone(),
+                    make_hasher(&hash_builder, type_engine),
+                );
+                decl_id
+            }
+        }
     }
 
     /// Given a [DeclId] `index`, finds all the parents of `index` and all the
@@ -70,9 +100,10 @@ impl DeclEngine {
                     if !acc_parents.contains_key(&**curr_parent) {
                         acc_parents.insert(**curr_parent, curr_parent.clone());
                     }
-                    if !left_to_check.iter().any(|x| x.eq(curr_parent, engines)) {
-                        left_to_check.push_back(curr_parent.clone());
-                    }
+                    todo!();
+                    // if !left_to_check.iter().any(|x| x.eq(curr_parent, engines)) {
+                    //     left_to_check.push_back(curr_parent.clone());
+                    // }
                 }
             }
         }

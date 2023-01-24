@@ -82,8 +82,9 @@ pub enum TyExpressionVariant {
         elem_to_access_span: Span,
     },
     EnumInstantiation {
-        /// for printing
-        enum_decl: TyEnumDeclaration,
+        // Type of this enum, including its definition and fields. We expect
+        // this to be the [TypeInfo][Enum] variant.
+        type_id: TypeId,
         /// for printing
         variant_name: Ident,
         tag: usize,
@@ -306,30 +307,16 @@ impl PartialEqWithEngines for TyExpressionVariant {
                         .get(*l_resolved_type_of_parent)
                         .eq(&type_engine.get(*r_resolved_type_of_parent), engines)
             }
-            (
-                Self::EnumInstantiation {
-                    enum_decl: l_enum_decl,
-                    variant_name: l_variant_name,
-                    tag: l_tag,
-                    contents: l_contents,
-                    ..
-                },
-                Self::EnumInstantiation {
-                    enum_decl: r_enum_decl,
-                    variant_name: r_variant_name,
-                    tag: r_tag,
-                    contents: r_contents,
-                    ..
-                },
-            ) => {
-                l_enum_decl.eq(r_enum_decl, engines)
-                    && l_variant_name == r_variant_name
-                    && l_tag == r_tag
-                    && if let (Some(l_contents), Some(r_contents)) = (l_contents, r_contents) {
-                        (**l_contents).eq(&**r_contents, engines)
-                    } else {
-                        true
-                    }
+            (Self::EnumInstantiation { .. }, Self::EnumInstantiation { .. }) => {
+                todo!()
+                // l_enum_decl.eq(r_enum_decl, engines)
+                //     && l_variant_name == r_variant_name
+                //     && l_tag == r_tag
+                //     && if let (Some(l_contents), Some(r_contents)) = (l_contents, r_contents) {
+                //         (**l_contents).eq(&**r_contents, engines)
+                //     } else {
+                //         true
+                //     }
             }
             (
                 Self::AbiCast {
@@ -446,7 +433,7 @@ impl HashWithEngines for TyExpressionVariant {
                 state.write_u8(11);
                 condition.hash(state, type_engine);
                 then.hash(state, type_engine);
-                r#else.map(|x| x.hash(state, type_engine));
+                r#else.as_ref().map(|x| x.hash(state, type_engine));
             }
             Self::AsmExpression {
                 registers,
@@ -485,18 +472,13 @@ impl HashWithEngines for TyExpressionVariant {
                     .get(*resolved_type_of_parent)
                     .hash(state, type_engine);
             }
-            Self::EnumInstantiation {
-                enum_decl,
-                variant_name,
-                tag,
-                contents,
-                ..
-            } => {
-                state.write_u8(15);
-                enum_decl.hash(state, type_engine);
-                variant_name.hash(state);
-                tag.hash(state);
-                contents.map(|x| x.hash(state, type_engine));
+            Self::EnumInstantiation { .. } => {
+                todo!();
+                // state.write_u8(15);
+                // enum_decl.hash(state, type_engine);
+                // variant_name.hash(state);
+                // tag.hash(state);
+                // contents.map(|x| x.hash(state, type_engine));
             }
             Self::AbiCast {
                 abi_name, address, ..
@@ -632,15 +614,12 @@ impl SubstTypes for TyExpressionVariant {
                 resolved_type_of_parent.subst(type_mapping, engines);
                 prefix.subst(type_mapping, engines);
             }
-            EnumInstantiation {
-                enum_decl,
-                contents,
-                ..
-            } => {
-                enum_decl.subst(type_mapping, engines);
-                if let Some(ref mut contents) = contents {
-                    contents.subst(type_mapping, engines)
-                };
+            EnumInstantiation { .. } => {
+                todo!();
+                // enum_decl.subst(type_mapping, engines);
+                // if let Some(ref mut contents) = contents {
+                //     contents.subst(type_mapping, engines)
+                // };
             }
             AbiCast { address, .. } => address.subst(type_mapping, engines),
             // storage is never generic and cannot be monomorphized
@@ -746,15 +725,12 @@ impl ReplaceSelfType for TyExpressionVariant {
                 resolved_type_of_parent.replace_self_type(engines, self_type);
                 prefix.replace_self_type(engines, self_type);
             }
-            EnumInstantiation {
-                enum_decl,
-                contents,
-                ..
-            } => {
-                enum_decl.replace_self_type(engines, self_type);
-                if let Some(ref mut contents) = contents {
-                    contents.replace_self_type(engines, self_type)
-                };
+            EnumInstantiation { .. } => {
+                todo!();
+                // enum_decl.replace_self_type(engines, self_type);
+                // if let Some(ref mut contents) = contents {
+                //     contents.replace_self_type(engines, self_type)
+                // };
             }
             AbiCast { address, .. } => address.replace_self_type(engines, self_type),
             StorageAccess { .. } => (),
@@ -844,16 +820,13 @@ impl ReplaceDecls for TyExpressionVariant {
             TupleElemAccess { prefix, .. } => {
                 prefix.replace_decls(decl_mapping, engines);
             }
-            EnumInstantiation {
-                enum_decl: _,
-                contents,
-                ..
-            } => {
+            EnumInstantiation { .. } => {
+                todo!();
                 // TODO: replace enum decl
                 //enum_decl.replace_decls(decl_mapping);
-                if let Some(ref mut contents) = contents {
-                    contents.replace_decls(decl_mapping, engines);
-                };
+                // if let Some(ref mut contents) = contents {
+                //     contents.replace_decls(decl_mapping, engines);
+                // };
             }
             AbiCast { address, .. } => address.replace_decls(decl_mapping, engines),
             StorageAccess { .. } => (),
@@ -939,18 +912,14 @@ impl DisplayWithEngines for TyExpressionVariant {
             TyExpressionVariant::VariableExpression { name, .. } => {
                 format!("\"{}\" variable exp", name.as_str())
             }
-            TyExpressionVariant::EnumInstantiation {
-                tag,
-                enum_decl,
-                variant_name,
-                ..
-            } => {
-                format!(
-                    "{}::{} enum instantiation (tag: {})",
-                    enum_decl.name.as_str(),
-                    variant_name.as_str(),
-                    tag
-                )
+            TyExpressionVariant::EnumInstantiation { .. } => {
+                todo!();
+                // format!(
+                //     "{}::{} enum instantiation (tag: {})",
+                //     enum_decl.name.as_str(),
+                //     variant_name.as_str(),
+                //     tag
+                // )
             }
             TyExpressionVariant::StorageAccess(access) => {
                 format!("storage field {} access", access.storage_field_name())

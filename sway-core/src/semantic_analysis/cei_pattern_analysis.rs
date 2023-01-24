@@ -521,9 +521,10 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
             crate::TypeInfo::Struct { fields, .. } if fields.is_empty() => HashSet::new(),
             // if it's an empty enum then it cannot be constructed and hence cannot be read
             // adding this check here just to be on the safe side
-            crate::TypeInfo::Enum { variant_types, .. } if variant_types.is_empty() => {
-                HashSet::new()
-            }
+            crate::TypeInfo::Enum { .. } => todo!(),
+            // crate::TypeInfo::Enum { variant_types, .. } if variant_types.is_empty() => {
+            //     HashSet::new()
+            // }
             _ => HashSet::from([Effect::StorageRead]),
         },
         StorageReassignment(storage_reassign) => {

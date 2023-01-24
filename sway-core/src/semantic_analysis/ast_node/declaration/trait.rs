@@ -48,16 +48,14 @@ impl ty::TyTraitDeclaration {
         let mut trait_namespace = ctx.namespace.clone();
         let mut ctx = ctx.scoped(&mut trait_namespace).with_self_type(self_type);
 
-        // type check the type parameters, which will insert them into the namespace
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                return err(warnings, errors),
-                warnings,
-                errors
-            ));
-        }
+        // Type check the type parameters, which will insert them into the
+        // namespace.
+        let (mut new_type_parameters, _) = check!(
+            TypeParameter::type_check_type_parameters(ctx.by_ref(), type_parameters, true),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // Recursively make the interface surfaces and methods of the
         // supertraits available to this trait.
@@ -78,11 +76,11 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            let decl_id = decl_engine.insert(method.clone());
+            let decl_id = decl_engine.insert(type_engine, method.clone());
             new_interface_surface.push(decl_id.clone());
             dummy_interface_surface.push(
                 decl_engine
-                    .insert(method.to_dummy_func(Mode::NonAbi))
+                    .insert(type_engine, method.to_dummy_func(Mode::NonAbi))
                     .with_parent(decl_engine, decl_id),
             );
         }
@@ -117,7 +115,7 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            new_methods.push(decl_engine.insert(method));
+            new_methods.push(decl_engine.insert(type_engine, method));
         }
 
         let typed_trait_decl = ty::TyTraitDeclaration {
@@ -211,6 +209,7 @@ impl ty::TyTraitDeclaration {
             ..
         } = self;
 
+        let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
@@ -261,7 +260,9 @@ impl ty::TyTraitDeclaration {
             method.subst(&type_mapping, engines);
             impld_method_ids.insert(
                 method.name.clone(),
-                decl_engine.insert(method).with_parent(decl_engine, decl_id),
+                decl_engine
+                    .insert(type_engine, method)
+                    .with_parent(decl_engine, decl_id),
             );
         }
 
@@ -282,6 +283,7 @@ impl ty::TyTraitDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
@@ -318,7 +320,7 @@ impl ty::TyTraitDeclaration {
             method.subst(&type_mapping, engines);
             all_methods.push(
                 ctx.decl_engine
-                    .insert(method.to_dummy_func(Mode::NonAbi))
+                    .insert(type_engine, method.to_dummy_func(Mode::NonAbi))
                     .with_parent(ctx.decl_engine, decl_id.clone()),
             );
         }
@@ -333,7 +335,7 @@ impl ty::TyTraitDeclaration {
             method.subst(&type_mapping, engines);
             all_methods.push(
                 ctx.decl_engine
-                    .insert(method)
+                    .insert(type_engine, method)
                     .with_parent(ctx.decl_engine, decl_id.clone()),
             );
         }

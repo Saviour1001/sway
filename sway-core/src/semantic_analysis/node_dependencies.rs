@@ -654,11 +654,12 @@ impl Dependencies {
                     deps.gather_from_typeinfo(type_engine, &type_engine.get(field.type_id))
                 })
             }
-            TypeInfo::Enum { variant_types, .. } => {
-                self.gather_from_iter(variant_types.iter(), |deps, variant| {
-                    deps.gather_from_typeinfo(type_engine, &type_engine.get(variant.type_id))
-                })
-            }
+            TypeInfo::Enum { .. } => todo!(),
+            // TypeInfo::Enum { variant_types, .. } => {
+            //     self.gather_from_iter(variant_types.iter(), |deps, variant| {
+            //         deps.gather_from_typeinfo(type_engine, &type_engine.get(variant.type_id))
+            //     })
+            // }
             _ => self,
         }
     }
@@ -800,6 +801,9 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Unknown => "unknown",
         TypeInfo::UnknownGeneric { name, .. } => return format!("generic {}", name),
         TypeInfo::Placeholder(_) => "_",
+        TypeInfo::TypeParam(n) => {
+            return format!("typeparam({})", n);
+        }
         TypeInfo::ContractCaller { abi_name, .. } => {
             return format!("contract caller {}", abi_name);
         }

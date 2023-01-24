@@ -27,7 +27,9 @@ impl PartialEqWithEngines for TyAsmRegisterDeclaration {
 impl HashWithEngines for TyAsmRegisterDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
-        self.initializer.map(|x| x.hash(state, type_engine));
+        self.initializer
+            .as_ref()
+            .map(|x| x.hash(state, type_engine));
     }
 }
 

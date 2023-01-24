@@ -412,11 +412,12 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_struct_declaration(engines, &struct_decl, graph, entry_node, tree_type);
             Ok(leaves.to_vec())
         }
-        EnumDeclaration(decl_id) => {
-            let enum_decl = decl_engine.get_enum(decl_id.clone(), &span)?;
-            connect_enum_declaration(engines, &enum_decl, graph, entry_node);
-            Ok(leaves.to_vec())
-        }
+        EnumDeclaration(_, _) => todo!(),
+        // EnumDeclaration(decl_id) => {
+        //     let enum_decl = decl_engine.get_enum(decl_id.clone(), &span)?;
+        //     connect_enum_declaration(engines, &enum_decl, graph, entry_node);
+        //     Ok(leaves.to_vec())
+        // }
         ImplTrait(decl_id) => {
             let ty::TyImplTrait {
                 trait_name,
@@ -621,27 +622,28 @@ fn get_struct_type_info_from_type_id(
 ) -> Result<Option<TypeInfo>, TypeError> {
     let type_info = type_engine.to_typeinfo(type_id, &Span::dummy())?;
     match type_info {
-        TypeInfo::Enum {
-            type_parameters,
-            variant_types,
-            ..
-        } => {
-            for param in type_parameters.iter() {
-                if let Ok(Some(type_info)) =
-                    get_struct_type_info_from_type_id(type_engine, param.type_id)
-                {
-                    return Ok(Some(type_info));
-                }
-            }
-            for var in variant_types.iter() {
-                if let Ok(Some(type_info)) =
-                    get_struct_type_info_from_type_id(type_engine, var.type_id)
-                {
-                    return Ok(Some(type_info));
-                }
-            }
-            Ok(None)
-        }
+        TypeInfo::Enum { .. } => todo!(),
+        // TypeInfo::Enum {
+        //     type_parameters,
+        //     variant_types,
+        //     ..
+        // } => {
+        //     for param in type_parameters.iter() {
+        //         if let Ok(Some(type_info)) =
+        //             get_struct_type_info_from_type_id(type_engine, param.type_id)
+        //         {
+        //             return Ok(Some(type_info));
+        //         }
+        //     }
+        //     for var in variant_types.iter() {
+        //         if let Ok(Some(type_info)) =
+        //             get_struct_type_info_from_type_id(type_engine, var.type_id)
+        //         {
+        //             return Ok(Some(type_info));
+        //         }
+        //     }
+        //     Ok(None)
+        // }
         TypeInfo::Tuple(type_args) => {
             for arg in type_args.iter() {
                 if let Ok(Some(type_info)) =
@@ -1013,25 +1015,26 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 })
                 .unwrap_or_else(|| leaves.to_vec()))
         }
-        EnumInstantiation {
-            enum_decl,
-            variant_name,
-            contents,
-            ..
-        } => {
-            // connect this particular instantiation to its variants declaration
-            connect_enum_instantiation(
-                engines,
-                enum_decl,
-                contents,
-                variant_name,
-                graph,
-                leaves,
-                exit_node,
-                tree_type,
-                options,
-            )
-        }
+        EnumInstantiation { .. } => todo!(),
+        // EnumInstantiation {
+        //     enum_decl,
+        //     variant_name,
+        //     contents,
+        //     ..
+        // } => {
+        //     // connect this particular instantiation to its variants declaration
+        //     connect_enum_instantiation(
+        //         engines,
+        //         enum_decl,
+        //         contents,
+        //         variant_name,
+        //         graph,
+        //         leaves,
+        //         exit_node,
+        //         tree_type,
+        //         options,
+        //     )
+        // }
         IfExp {
             condition,
             then,
@@ -1658,18 +1661,23 @@ fn construct_dead_code_warning_from_node(
             }
         }
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::EnumDeclaration(decl_id)),
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::EnumDeclaration(decl_id, _)),
             span,
-        } => {
-            let warning_span = match decl_engine.get_enum(decl_id.clone(), span) {
-                Ok(ty::TyEnumDeclaration { name, .. }) => name.span(),
-                Err(_) => span.clone(),
-            };
-            CompileWarning {
-                span: warning_span,
-                warning_content: Warning::DeadEnumDeclaration,
-            }
-        }
+        } => todo!(),
+        // ty::TyAstNode {
+        //     content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::EnumDeclaration(decl_id)),
+        //     span,
+        // } => {
+        //     let warning_span = match decl_engine.get_enum(decl_id.clone(), span) {
+        //         Ok(ty::TyEnumDeclaration { name, .. }) => name.span(),
+        //         Err(_) => span.clone(),
+        //     };
+        //     CompileWarning {
+        //         span: warning_span,
+        //         warning_content: Warning::DeadEnumDeclaration,
+        //     }
+        // }
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(decl_id)),
             span,

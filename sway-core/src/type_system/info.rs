@@ -96,10 +96,10 @@ pub enum TypeInfo {
     TypeParam(usize),
     Str(Length),
     UnsignedInteger(IntegerBits),
-    // https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html#variant.Adt
+    // https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/sty/enum.TyKind.html#variant.Adt
     Enum {
         name: Ident,
-        def_id: DeclId,
+        decl_id: DeclId,
         subst_list: TypeSubstList,
     },
     Struct {
@@ -179,7 +179,7 @@ impl HashWithEngines for TypeInfo {
             }
             TypeInfo::Enum {
                 name,
-                def_id,
+                decl_id: def_id,
                 subst_list,
             } => {
                 state.write_u8(7);
@@ -302,12 +302,12 @@ impl PartialEqWithEngines for TypeInfo {
             (
                 Self::Enum {
                     name: l_name,
-                    def_id: l_def_id,
+                    decl_id: l_def_id,
                     subst_list: l_subst_list,
                 },
                 Self::Enum {
                     name: r_name,
-                    def_id: r_def_id,
+                    decl_id: r_def_id,
                     subst_list: r_subst_list,
                 },
             ) => l_name == r_name && l_def_id == r_def_id && l_subst_list.eq(r_subst_list, engines),
@@ -403,13 +403,13 @@ impl DisplayWithEngines for TypeInfo {
             ErrorRecovery => "unknown due to error".into(),
             Enum {
                 name,
-                def_id,
+                decl_id: def_id,
                 subst_list,
             } => {
-                let decl = decl_engine
+                let mut decl = decl_engine
                     .get_enum(def_id.clone(), &name.span())
                     .expect("unknown enum");
-                decl.subst2(engines, subst_list);
+                decl.finalize(engines, subst_list);
                 let type_parameters = decl.type_parameters;
                 print_inner_types(
                     engines,
@@ -474,13 +474,13 @@ impl UnconstrainedTypeParameters for TypeInfo {
             }
             TypeInfo::Enum {
                 name,
-                def_id,
+                decl_id: def_id,
                 subst_list,
             } => {
-                let decl = decl_engine
+                let mut decl = decl_engine
                     .get_enum(def_id.clone(), &name.span())
                     .expect("unknown enum");
-                decl.subst2(engines, subst_list);
+                decl.finalize(engines, subst_list);
                 let unconstrained_in_type_parameters = decl
                     .type_parameters
                     .iter()
@@ -713,13 +713,13 @@ impl TypeInfo {
             }
             Enum {
                 name,
-                def_id,
+                decl_id: def_id,
                 subst_list,
             } => {
-                let decl = decl_engine
+                let mut decl = decl_engine
                     .get_enum(def_id.clone(), &name.span())
                     .expect("unknown enum");
-                decl.subst2(engines, subst_list);
+                decl.finalize(engines, subst_list);
                 let variant_names = {
                     let names = decl
                         .variants
@@ -806,13 +806,13 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum {
                 name,
-                def_id,
+                decl_id: def_id,
                 subst_list,
             } => {
-                let decl = decl_engine
+                let mut decl = decl_engine
                     .get_enum(def_id.clone(), &name.span())
                     .expect("unknown enum");
-                decl.subst2(engines, subst_list);
+                decl.finalize(engines, subst_list);
                 decl.variants
                     .iter()
                     .all(|variant_type| id_uninhabited(variant_type.type_id))
@@ -834,13 +834,13 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum {
                 name,
-                def_id,
+                decl_id: def_id,
                 subst_list,
             } => {
-                let decl = decl_engine
+                let mut decl = decl_engine
                     .get_enum(def_id.clone(), &name.span())
                     .expect("unknown enum");
-                decl.subst2(engines, subst_list);
+                decl.finalize(engines, subst_list);
                 let mut found_unit_variant = false;
                 for variant_type in decl.variants {
                     let type_info = type_engine.get(variant_type.type_id);
@@ -989,14 +989,14 @@ impl TypeInfo {
             match type_engine.get(type_id) {
                 TypeInfo::Enum {
                     name,
-                    def_id,
+                    decl_id: def_id,
                     subst_list,
                 } => {
                     inner_types.insert(type_id);
-                    let decl = decl_engine
+                    let mut decl = decl_engine
                         .get_enum(def_id.clone(), &name.span())
                         .expect("unknown enum");
-                    decl.subst2(engines, &subst_list);
+                    decl.finalize(engines, &subst_list);
                     for type_param in decl.type_parameters.iter() {
                         inner_types.extend(
                             type_engine
@@ -1085,13 +1085,13 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum {
                 name,
-                def_id,
+                decl_id: def_id,
                 subst_list,
             } => {
-                let decl = decl_engine
+                let mut decl = decl_engine
                     .get_enum(def_id.clone(), &name.span())
                     .expect("unknown enum");
-                decl.subst2(engines, &subst_list);
+                decl.finalize(engines, &subst_list);
                 for type_param in decl.type_parameters.iter() {
                     inner_types.extend(helper(type_param.type_id));
                 }
@@ -1249,13 +1249,13 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum {
                 name,
-                def_id,
+                decl_id: def_id,
                 subst_list,
             } => {
-                let decl = decl_engine
+                let mut decl = decl_engine
                     .get_enum(def_id.clone(), &name.span())
                     .expect("unknown enum");
-                decl.subst2(engines, &subst_list);
+                decl.finalize(engines, &subst_list);
                 for type_parameter in decl.type_parameters.iter() {
                     let mut nested_types = check!(
                         type_engine
@@ -1557,12 +1557,12 @@ impl TypeInfo {
             (
                 Self::Enum {
                     name: l_name,
-                    def_id: l_def_id,
+                    decl_id: l_def_id,
                     subst_list: l_subst_list,
                 },
                 Self::Enum {
                     name: r_name,
-                    def_id: r_def_id,
+                    decl_id: r_def_id,
                     subst_list: r_subst_list,
                 },
             ) => {
@@ -1693,7 +1693,11 @@ impl TypeInfo {
         // TODO: there might be an optimization here that if the type params hold
         // only non-dynamic types, then it doesn't matter that there are type params
         match self {
-            TypeInfo::Enum { name, def_id, .. } => {
+            TypeInfo::Enum {
+                name,
+                decl_id: def_id,
+                ..
+            } => {
                 let decl = decl_engine
                     .get_enum(def_id.clone(), &name.span())
                     .expect("unknown enum");
@@ -1729,7 +1733,11 @@ impl TypeInfo {
         let decl_engine = engines.de();
         match self {
             TypeInfo::Unknown => false,
-            TypeInfo::Enum { name, def_id, .. } => {
+            TypeInfo::Enum {
+                name,
+                decl_id: def_id,
+                ..
+            } => {
                 let decl = decl_engine
                     .get_enum(def_id.clone(), &name.span())
                     .expect("unknown enum");

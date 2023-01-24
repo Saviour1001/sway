@@ -91,7 +91,7 @@ impl ty::TyAstNode {
                 r#type: engines.help_out(node.type_info(type_engine)).to_string(),
             };
             assert_or_warn!(
-                node.type_info(type_engine).can_safely_ignore(type_engine),
+                node.type_info(type_engine).can_safely_ignore(engines),
                 warnings,
                 node.span.clone(),
                 warning

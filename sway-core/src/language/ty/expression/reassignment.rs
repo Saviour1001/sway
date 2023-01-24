@@ -1,5 +1,4 @@
 use std::{
-    any::Any,
     borrow::Cow,
     hash::{Hash, Hasher},
 };

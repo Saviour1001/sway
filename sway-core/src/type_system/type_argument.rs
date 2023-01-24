@@ -78,8 +78,8 @@ impl SubstTypes for TypeArgument {
     }
 }
 
-impl SubstTypes2 for TypeArgument {
-    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
-        self.type_id.subst2(engines, subst_list);
+impl FinalizeReplace for TypeArgument {
+    fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.type_id.finalize(engines, subst_list);
     }
 }

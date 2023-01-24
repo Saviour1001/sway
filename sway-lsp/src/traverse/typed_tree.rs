@@ -137,7 +137,7 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
-            ty::TyDeclaration::EnumDeclaration(decl_id) => {
+            ty::TyDeclaration::EnumDeclaration(decl_id, _) => {
                 if let Ok(enum_decl) = decl_engine.get_enum(decl_id.clone(), &decl_id.span()) {
                     if let Some(mut token) = self
                         .tokens
@@ -466,47 +466,48 @@ impl<'a> TypedTree<'a> {
                     token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
                 }
             }
-            ty::TyExpressionVariant::EnumInstantiation {
-                variant_name,
-                variant_instantiation_span,
-                enum_decl,
-                enum_instantiation_span,
-                contents,
-                type_binding,
-                ..
-            } => {
-                if let Some(mut token) = self
-                    .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(enum_instantiation_span.clone())))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(enum_decl.name.clone()));
-                }
+            ty::TyExpressionVariant::EnumInstantiation { .. } => todo!(),
+            // ty::TyExpressionVariant::EnumInstantiation {
+            //     variant_name,
+            //     variant_instantiation_span,
+            //     enum_decl,
+            //     enum_instantiation_span,
+            //     contents,
+            //     type_binding,
+            //     ..
+            // } => {
+            //     if let Some(mut token) = self
+            //         .tokens
+            //         .try_get_mut(&to_ident_key(&Ident::new(enum_instantiation_span.clone())))
+            //         .try_unwrap()
+            //     {
+            //         token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+            //         token.type_def = Some(TypeDefinition::Ident(enum_decl.name.clone()));
+            //     }
 
-                for type_arg in &type_binding.type_arguments {
-                    self.collect_type_id(
-                        type_arg.type_id,
-                        &TypedAstToken::TypedArgument(type_arg.clone()),
-                        type_arg.span(),
-                    );
-                }
+            //     for type_arg in &type_binding.type_arguments {
+            //         self.collect_type_id(
+            //             type_arg.type_id,
+            //             &TypedAstToken::TypedArgument(type_arg.clone()),
+            //             type_arg.span(),
+            //         );
+            //     }
 
-                if let Some(mut token) = self
-                    .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(
-                        variant_instantiation_span.clone(),
-                    )))
-                    .try_unwrap()
-                {
-                    token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(variant_name.clone()));
-                }
+            //     if let Some(mut token) = self
+            //         .tokens
+            //         .try_get_mut(&to_ident_key(&Ident::new(
+            //             variant_instantiation_span.clone(),
+            //         )))
+            //         .try_unwrap()
+            //     {
+            //         token.typed = Some(TypedAstToken::TypedExpression(expression.clone()));
+            //         token.type_def = Some(TypeDefinition::Ident(variant_name.clone()));
+            //     }
 
-                if let Some(contents) = contents.as_deref() {
-                    self.handle_expression(contents);
-                }
-            }
+            //     if let Some(contents) = contents.as_deref() {
+            //         self.handle_expression(contents);
+            //     }
+            // }
             ty::TyExpressionVariant::AbiCast {
                 abi_name, address, ..
             } => {
@@ -688,31 +689,32 @@ impl<'a> TypedTree<'a> {
                     );
                 }
             }
-            TypeInfo::Enum {
-                type_parameters,
-                variant_types,
-                ..
-            } => {
-                if let Some(token) = self
-                    .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(type_span)))
-                    .try_unwrap()
-                {
-                    assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
-                }
+            TypeInfo::Enum { .. } => todo!(),
+            // TypeInfo::Enum {
+            //     type_parameters,
+            //     variant_types,
+            //     ..
+            // } => {
+            //     if let Some(token) = self
+            //         .tokens
+            //         .try_get_mut(&to_ident_key(&Ident::new(type_span)))
+            //         .try_unwrap()
+            //     {
+            //         assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
+            //     }
 
-                for param in type_parameters {
-                    self.collect_type_id(
-                        param.type_id,
-                        &TypedAstToken::TypedParameter(param.clone()),
-                        param.name_ident.span().clone(),
-                    );
-                }
+            //     for param in type_parameters {
+            //         self.collect_type_id(
+            //             param.type_id,
+            //             &TypedAstToken::TypedParameter(param.clone()),
+            //             param.name_ident.span().clone(),
+            //         );
+            //     }
 
-                for variant in variant_types {
-                    self.collect_ty_enum_variant(variant);
-                }
-            }
+            //     for variant in variant_types {
+            //         self.collect_ty_enum_variant(variant);
+            //     }
+            // }
             TypeInfo::Struct {
                 type_parameters,
                 fields,

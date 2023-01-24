@@ -48,14 +48,14 @@ impl SubstTypes for TyEnumDeclaration {
     }
 }
 
-impl SubstTypes2 for TyEnumDeclaration {
-    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+impl FinalizeReplace for TyEnumDeclaration {
+    fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         self.variants
             .iter_mut()
-            .for_each(|x| x.subst2(engines, subst_list));
+            .for_each(|x| x.finalize(engines, subst_list));
         self.type_parameters
             .iter_mut()
-            .for_each(|x| x.subst2(engines, subst_list));
+            .for_each(|x| x.finalize(engines, subst_list));
     }
 }
 
@@ -67,21 +67,6 @@ impl ReplaceSelfType for TyEnumDeclaration {
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}
-
-impl CreateTypeId for TyEnumDeclaration {
-    fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
-        type_engine.insert(
-            decl_engine,
-            TypeInfo::Enum {
-                name: self.name.clone(),
-                variant_types: self.variants.clone(),
-                type_parameters: self.type_parameters.clone(),
-            },
-        )
     }
 }
 
@@ -169,9 +154,9 @@ impl SubstTypes for TyEnumVariant {
     }
 }
 
-impl SubstTypes2 for TyEnumVariant {
-    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
-        self.type_id.subst2(engines, subst_list);
+impl FinalizeReplace for TyEnumVariant {
+    fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.type_id.finalize(engines, subst_list);
     }
 }
 

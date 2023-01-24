@@ -279,7 +279,7 @@ fn compile_declarations(
             }
 
             ty::TyDeclaration::StructDeclaration(_)
-            | ty::TyDeclaration::EnumDeclaration(_)
+            | ty::TyDeclaration::EnumDeclaration(_, _)
             | ty::TyDeclaration::TraitDeclaration(_)
             | ty::TyDeclaration::VariableDeclaration(_)
             | ty::TyDeclaration::AbiDeclaration(_)
@@ -557,7 +557,7 @@ fn compile_abi_method(
     let type_engine = engines.te();
 
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
-    let get_selector_result = ast_fn_decl.to_fn_selector_value(type_engine);
+    let get_selector_result = ast_fn_decl.to_fn_selector_value(engines);
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
     let selector = match get_selector_result.ok(&mut warnings, &mut errors) {

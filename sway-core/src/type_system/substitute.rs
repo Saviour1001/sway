@@ -1,7 +1,15 @@
-use std::{collections::BTreeMap, fmt, hash::Hasher, slice::Iter};
+use std::{
+    collections::BTreeMap,
+    fmt,
+    hash::Hasher,
+    slice::{Iter, IterMut},
+};
+
+use sway_error::error::CompileError;
+use sway_types::{Ident, Span, Spanned};
 
 use super::*;
-use crate::engine_threading::*;
+use crate::{engine_threading::*, namespace::Path, Namespace};
 
 pub(crate) trait SubstTypes {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>);
@@ -13,16 +21,19 @@ pub(crate) trait SubstTypes {
     }
 }
 
-pub(crate) trait SubstTypes2 {
-    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList);
+pub(crate) trait FinalizeReplace {
+    fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList);
 
-    fn subst2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+    fn finalize(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         if !subst_list.is_empty() {
-            self.subst_inner2(engines, subst_list);
+            self.finalize_inner(engines, subst_list);
         }
     }
 }
 
+/// A list of types that serve as the list of type params for type substitution.
+/// Any types of the [TypeInfo][TypeParam] variant will point to an index in
+/// this list.
 #[derive(Debug, Clone, Default)]
 pub struct TypeSubstList {
     list: Vec<TypeParameter>,
@@ -33,6 +44,10 @@ impl TypeSubstList {
         TypeSubstList { list: vec![] }
     }
 
+    pub(crate) fn is_empty(&self) -> bool {
+        self.list.is_empty()
+    }
+
     pub(crate) fn len(&self) -> usize {
         self.list.len()
     }
@@ -41,22 +56,14 @@ impl TypeSubstList {
         self.list.push(type_param);
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
-        self.list.is_empty()
-    }
-
     pub(crate) fn find_match(&self, engines: Engines<'_>, type_id: TypeId) -> Option<TypeId> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
         let type_engine = engines.te();
         match type_engine.get(type_id) {
-            TypeInfo::TypeParam(n) if n < self.list.len() => ok(
-                self.list.get(n).map(|type_param| type_param.type_id),
-                warnings,
-                errors,
-            ),
+            TypeInfo::TypeParam(n) if n < self.list.len() => {
+                self.list.get(n).map(|type_param| type_param.type_id)
+            }
             TypeInfo::TypeParam(_) => panic!("tried an out of bounds substitution"),
-            _ => ok(None, warnings, errors),
+            _ => None,
         }
     }
 
@@ -68,9 +75,99 @@ impl TypeSubstList {
     //     self.list.into_iter()
     // }
 
-    // pub(crate) fn iter_mut(&mut self) -> IterMut<'_, TypeParameter> {
-    //     self.list.iter_mut()
-    // }
+    pub(crate) fn iter_mut(&mut self) -> IterMut<'_, TypeParameter> {
+        self.list.iter_mut()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn monomorphize(
+        &mut self,
+        engines: Engines<'_>,
+        type_arguments: &mut [TypeArgument],
+        enforce_type_arguments: EnforceTypeArguments,
+        obj_name: &Ident,
+        call_site_span: &Span,
+        namespace: &mut Namespace,
+        mod_path: &Path,
+    ) -> CompileResult<()> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
+
+        match (self.is_empty(), type_arguments.is_empty()) {
+            (true, true) => ok((), warnings, errors),
+            (false, true) => {
+                if let EnforceTypeArguments::Yes = enforce_type_arguments {
+                    errors.push(CompileError::NeedsTypeArguments {
+                        name: obj_name.clone(),
+                        span: call_site_span.clone(),
+                    });
+                    return err(warnings, errors);
+                }
+                ok((), warnings, errors)
+            }
+            (true, false) => {
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or_else(|| obj_name.span());
+                errors.push(CompileError::DoesNotTakeTypeArguments {
+                    name: obj_name.clone(),
+                    span: type_arguments_span,
+                });
+                err(warnings, errors)
+            }
+            (false, false) => {
+                let type_arguments_span = type_arguments
+                    .iter()
+                    .map(|x| x.span.clone())
+                    .reduce(Span::join)
+                    .unwrap_or_else(|| obj_name.span());
+                if self.len() != type_arguments.len() {
+                    errors.push(CompileError::IncorrectNumberOfTypeArguments {
+                        given: type_arguments.len(),
+                        expected: self.len(),
+                        span: type_arguments_span,
+                    });
+                    return err(warnings, errors);
+                }
+                for type_argument in type_arguments.iter_mut() {
+                    type_argument.type_id = check!(
+                        type_engine.resolve(
+                            decl_engine,
+                            type_argument.type_id,
+                            &type_argument.span,
+                            enforce_type_arguments,
+                            None,
+                            namespace,
+                            mod_path
+                        ),
+                        type_engine.insert(decl_engine, TypeInfo::ErrorRecovery),
+                        warnings,
+                        errors
+                    );
+                }
+                self.subst2(type_arguments);
+                ok((), warnings, errors)
+            }
+        }
+    }
+
+    /// Substitutes the values in this [TypeSubstList] with the values in the
+    /// given list of [TypeArgument]s.
+    ///
+    /// NOTE: This method assumes that the length of `self` and `type_arguments`
+    /// is equal.
+    fn subst2(&mut self, type_arguments: &[TypeArgument]) {
+        self.iter_mut()
+            .zip(type_arguments.iter())
+            .for_each(|(type_param, type_arg)| {
+                type_param.type_id = type_arg.type_id;
+            });
+    }
 }
 
 impl std::iter::FromIterator<TypeParameter> for TypeSubstList {
@@ -292,26 +389,27 @@ impl TypeSubstMap {
                     type_arguments,
                 )
             }
-            (
-                TypeInfo::Enum {
-                    type_parameters, ..
-                },
-                TypeInfo::Enum {
-                    type_parameters: type_arguments,
-                    ..
-                },
-            ) => {
-                let type_parameters = type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
-                TypeSubstMap::from_superset_and_subset_helper(
-                    type_engine,
-                    type_parameters,
-                    type_arguments,
-                )
-            }
+            (TypeInfo::Enum { .. }, TypeInfo::Enum { .. }) => todo!(),
+            // (
+            //     TypeInfo::Enum {
+            //         type_parameters, ..
+            //     },
+            //     TypeInfo::Enum {
+            //         type_parameters: type_arguments,
+            //         ..
+            //     },
+            // ) => {
+            //     let type_parameters = type_parameters
+            //         .iter()
+            //         .map(|x| x.type_id)
+            //         .collect::<Vec<_>>();
+            //     let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
+            //     TypeSubstMap::from_superset_and_subset_helper(
+            //         type_engine,
+            //         type_parameters,
+            //         type_arguments,
+            //     )
+            // }
             (
                 TypeInfo::Struct {
                     type_parameters, ..
@@ -448,6 +546,7 @@ impl TypeSubstMap {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
+            TypeInfo::TypeParam(_) => todo!(),
             TypeInfo::Struct {
                 fields,
                 name,
@@ -487,45 +586,46 @@ impl TypeSubstMap {
                     None
                 }
             }
-            TypeInfo::Enum {
-                variant_types,
-                name,
-                type_parameters,
-            } => {
-                let mut need_to_create_new = false;
-                let variant_types = variant_types
-                    .into_iter()
-                    .map(|mut variant| {
-                        if let Some(type_id) = self.find_match(variant.type_id, engines) {
-                            need_to_create_new = true;
-                            variant.type_id = type_id;
-                        }
-                        variant
-                    })
-                    .collect::<Vec<_>>();
-                let type_parameters = type_parameters
-                    .into_iter()
-                    .map(|mut type_param| {
-                        if let Some(type_id) = self.find_match(type_param.type_id, engines) {
-                            need_to_create_new = true;
-                            type_param.type_id = type_id;
-                        }
-                        type_param
-                    })
-                    .collect::<Vec<_>>();
-                if need_to_create_new {
-                    Some(type_engine.insert(
-                        decl_engine,
-                        TypeInfo::Enum {
-                            variant_types,
-                            type_parameters,
-                            name,
-                        },
-                    ))
-                } else {
-                    None
-                }
-            }
+            TypeInfo::Enum { .. } => todo!(),
+            // TypeInfo::Enum {
+            //     variant_types,
+            //     name,
+            //     type_parameters,
+            // } => {
+            //     let mut need_to_create_new = false;
+            //     let variant_types = variant_types
+            //         .into_iter()
+            //         .map(|mut variant| {
+            //             if let Some(type_id) = self.find_match(variant.type_id, engines) {
+            //                 need_to_create_new = true;
+            //                 variant.type_id = type_id;
+            //             }
+            //             variant
+            //         })
+            //         .collect::<Vec<_>>();
+            //     let type_parameters = type_parameters
+            //         .into_iter()
+            //         .map(|mut type_param| {
+            //             if let Some(type_id) = self.find_match(type_param.type_id, engines) {
+            //                 need_to_create_new = true;
+            //                 type_param.type_id = type_id;
+            //             }
+            //             type_param
+            //         })
+            //         .collect::<Vec<_>>();
+            //     if need_to_create_new {
+            //         Some(type_engine.insert(
+            //             decl_engine,
+            //             TypeInfo::Enum {
+            //                 variant_types,
+            //                 type_parameters,
+            //                 name,
+            //             },
+            //         ))
+            //     } else {
+            //         None
+            //     }
+            // }
             TypeInfo::Array(mut elem_ty, count) => {
                 self.find_match(elem_ty.type_id, engines).map(|type_id| {
                     elem_ty.type_id = type_id;

@@ -184,7 +184,7 @@ impl TyProgram {
                                 let type_info = ty_engine.get(field.type_id);
                                 let type_info_str = engines.help_out(&type_info).to_string();
                                 let raw_ptr_type = type_info
-                                    .extract_nested_types(ty_engine, &field.span)
+                                    .extract_nested_types(engines, &field.span)
                                     .value
                                     .and_then(|value| {
                                         value

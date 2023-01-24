@@ -202,7 +202,7 @@ fn type_check_struct(
 
     let typed_scrutinee = ty::TyScrutinee {
         variant: ty::TyScrutineeVariant::StructScrutinee(struct_decl.name.clone(), typed_fields),
-        type_id: struct_decl.create_type_id(ctx.engines()),
+        type_id: todo!(),
         span,
     };
 
@@ -218,7 +218,9 @@ fn type_check_enum(
     let mut warnings = vec![];
     let mut errors = vec![];
 
+    let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
+    let engines = ctx.engines();
 
     let enum_name = match call_path.prefixes.last() {
         Some(enum_name) => enum_name,
@@ -239,26 +241,23 @@ fn type_check_enum(
         warnings,
         errors
     );
-    let mut enum_decl = check!(
+    let (enum_decl, enum_decl_id, enum_type_subst_list) = check!(
         unknown_decl.expect_enum(decl_engine, &enum_name.span()),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    // monomorphize the enum definition
-    check!(
-        ctx.monomorphize(
-            &mut enum_decl,
-            &mut [],
-            EnforceTypeArguments::No,
-            &enum_name.span()
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    let enum_type_id = enum_decl.create_type_id(ctx.engines());
+    // // Monomorphize the enum type subst list.
+    // enum_type_subst_list.monomorphize(
+    //     engines,
+    //     &mut [],
+    //     EnforceTypeArguments::No,
+    //     &enum_name,
+    //     &enum_name.span(),
+    //     ctx.namespace,
+    //     &ctx.namespace.mod_path.clone(),
+    // );
 
     // check to see if the variant exists and grab it if it does
     let variant = check!(
@@ -274,6 +273,16 @@ fn type_check_enum(
         return err(warnings, errors),
         warnings,
         errors
+    );
+
+    // Create the enum [TypeId].
+    let enum_type_id = type_engine.insert(
+        decl_engine,
+        TypeInfo::Enum {
+            name: enum_name.clone(),
+            decl_id: enum_decl_id,
+            subst_list: enum_type_subst_list,
+        },
     );
 
     let typed_scrutinee = ty::TyScrutinee {

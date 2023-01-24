@@ -164,11 +164,12 @@ impl<'eng> FnCompiler<'eng> {
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::EnumDeclaration(decl_id) => {
-                    let ted = self.decl_engine.get_enum(decl_id.clone(), &ast_node.span)?;
-                    create_enum_aggregate(self.type_engine, context, &ted.variants).map(|_| ())?;
-                    Ok(None)
-                }
+                ty::TyDeclaration::EnumDeclaration(_, _) => todo!(),
+                // ty::TyDeclaration::EnumDeclaration(decl_id) => {
+                //     let ted = self.decl_engine.get_enum(decl_id.clone(), &ast_node.span)?;
+                //     create_enum_aggregate(self.type_engine, context, &ted.variants).map(|_| ())?;
+                //     Ok(None)
+                // }
                 ty::TyDeclaration::ImplTrait(_) => {
                     // XXX What if we ignore the trait implementation???  Potentially since
                     // we currently inline everything and below we 'recreate' the functions
@@ -321,12 +322,13 @@ impl<'eng> FnCompiler<'eng> {
                     span_md_idx,
                 )
             }
-            ty::TyExpressionVariant::EnumInstantiation {
-                enum_decl,
-                tag,
-                contents,
-                ..
-            } => self.compile_enum_expr(context, md_mgr, enum_decl, *tag, contents.as_deref()),
+            ty::TyExpressionVariant::EnumInstantiation { .. } => todo!(),
+            // ty::TyExpressionVariant::EnumInstantiation {
+            //     enum_decl,
+            //     tag,
+            //     contents,
+            //     ..
+            // } => self.compile_enum_expr(context, md_mgr, enum_decl, *tag, contents.as_deref()),
             ty::TyExpressionVariant::Tuple { fields } => {
                 self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
             }

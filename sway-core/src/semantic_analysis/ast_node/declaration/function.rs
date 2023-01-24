@@ -65,19 +65,14 @@ impl ty::TyFunctionDeclaration {
             .with_purity(purity)
             .disallow_functions();
 
-        // type check the type parameters, which will also insert them into the namespace
-        let mut new_type_parameters = vec![];
-        for type_parameter in type_parameters.into_iter() {
-            new_type_parameters.push(check!(
-                TypeParameter::type_check(ctx.by_ref(), type_parameter),
-                continue,
-                warnings,
-                errors
-            ));
-        }
-        if !errors.is_empty() {
-            return err(warnings, errors);
-        }
+        // Type check the type parameters, which will insert them into the
+        // namespace.
+        let (mut new_type_parameters, _) = check!(
+            TypeParameter::type_check_type_parameters(ctx.by_ref(), type_parameters, true),
+            return err(warnings, errors),
+            warnings,
+            errors
+        );
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
@@ -211,11 +206,12 @@ fn unify_return_statements(
 
 #[test]
 fn test_function_selector_behavior() {
-    use crate::{decl_engine::DeclEngine, language::Visibility};
+    use crate::{decl_engine::DeclEngine, engine_threading::Engines, language::Visibility};
     use sway_types::{integer_bits::IntegerBits, Ident, Span};
 
     let type_engine = TypeEngine::default();
     let decl_engine = DeclEngine::default();
+    let engines = Engines::new(&type_engine, &decl_engine);
 
     let decl = ty::TyFunctionDeclaration {
         purity: Default::default(),
@@ -233,7 +229,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name(&type_engine).value {
+    let selector_text = match decl.to_selector_name(engines).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };
@@ -281,7 +277,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
     };
 
-    let selector_text = match decl.to_selector_name(&type_engine).value {
+    let selector_text = match decl.to_selector_name(engines).value {
         Some(value) => value,
         _ => panic!("test failure"),
     };

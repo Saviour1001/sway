@@ -60,6 +60,7 @@ impl ty::TyMatchExpression {
 
         let type_engine = ctx.type_engine;
         let decl_engine = ctx.decl_engine;
+        let engines = ctx.engines();
 
         // create the typed if expression object that we will be building on to
         let mut typed_if_exp: Option<ty::TyExpression> = None;
@@ -170,7 +171,10 @@ impl ty::TyMatchExpression {
                 // NOTE: This manual construction of the expression can (and
                 // most likely will) lead to an otherwise improperly typed
                 // expression, in most cases.
-                if !type_engine.get(self.value_type_id).has_valid_constructor() {
+                if !type_engine
+                    .get(self.value_type_id)
+                    .has_valid_constructor(engines)
+                {
                     let condition = ty::TyExpression {
                         expression: ty::TyExpressionVariant::Literal(Literal::Boolean(true)),
                         return_type: type_engine.insert(decl_engine, TypeInfo::Boolean),

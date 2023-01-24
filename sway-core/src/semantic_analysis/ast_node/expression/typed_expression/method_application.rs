@@ -308,7 +308,7 @@ pub(crate) fn type_check_method_application(
             return err(warnings, errors);
         };
         let func_selector = check!(
-            method.to_fn_selector_value(type_engine),
+            method.to_fn_selector_value(engines),
             [0; 4],
             warnings,
             errors
@@ -535,9 +535,8 @@ pub(crate) fn resolve_method_name(
         errors
     );
 
-    let decl_id = ctx
-        .decl_engine
-        .insert(func_decl)
+    let decl_id = decl_engine
+        .insert(type_engine, func_decl)
         .with_parent(ctx.decl_engine, decl_id);
 
     ok(decl_id, warnings, errors)

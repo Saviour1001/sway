@@ -468,7 +468,7 @@ impl TraitMap {
         let decider = |type_info: &TypeInfo, map_type_info: &TypeInfo| {
             type_info.is_subset_of(map_type_info, engines)
         };
-        let mut all_types = type_engine.get(type_id).extract_inner_types(type_engine);
+        let mut all_types = type_engine.get(type_id).extract_inner_types(engines);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
         self.filter_by_type_inner(engines, all_types, decider)
@@ -546,7 +546,7 @@ impl TraitMap {
         let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
         let all_types = type_engine
             .get(type_id)
-            .extract_inner_types(type_engine)
+            .extract_inner_types(engines)
             .into_iter()
             .collect::<Vec<_>>();
         // a curried version of the decider protocol to use in the helper functions
@@ -580,7 +580,7 @@ impl TraitMap {
         {
             for type_id in all_types.iter_mut() {
                 let type_info = type_engine.get(*type_id);
-                if !type_info.can_change() && *type_id == *map_type_id {
+                if !type_info.can_change(engines) && *type_id == *map_type_id {
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         *type_id,
@@ -602,7 +602,7 @@ impl TraitMap {
                             (
                                 name,
                                 decl_engine
-                                    .insert_wrapper(decl, decl_id.span())
+                                    .insert_wrapper(type_engine, decl, decl_id.span())
                                     .with_parent(decl_engine, decl_id),
                             )
                         })
@@ -829,34 +829,35 @@ fn are_equal_minus_dynamic_types(engines: Engines<'_>, left: TypeId, right: Type
                         acc && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
                     })
         }
-        (
-            TypeInfo::Enum {
-                name: l_name,
-                variant_types: l_variant_types,
-                type_parameters: l_type_parameters,
-            },
-            TypeInfo::Enum {
-                name: r_name,
-                variant_types: r_variant_types,
-                type_parameters: r_type_parameters,
-            },
-        ) => {
-            l_name == r_name
-                && l_variant_types.iter().zip(r_variant_types.iter()).fold(
-                    true,
-                    |acc, (left, right)| {
-                        acc && left.name == right.name
-                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
-                    },
-                )
-                && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
-                    true,
-                    |acc, (left, right)| {
-                        acc && left.name_ident == right.name_ident
-                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
-                    },
-                )
-        }
+        (TypeInfo::Enum { .. }, TypeInfo::Enum { .. }) => todo!(),
+        // (
+        //     TypeInfo::Enum {
+        //         name: l_name,
+        //         variant_types: l_variant_types,
+        //         type_parameters: l_type_parameters,
+        //     },
+        //     TypeInfo::Enum {
+        //         name: r_name,
+        //         variant_types: r_variant_types,
+        //         type_parameters: r_type_parameters,
+        //     },
+        // ) => {
+        //     l_name == r_name
+        //         && l_variant_types.iter().zip(r_variant_types.iter()).fold(
+        //             true,
+        //             |acc, (left, right)| {
+        //                 acc && left.name == right.name
+        //                     && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
+        //             },
+        //         )
+        //         && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
+        //             true,
+        //             |acc, (left, right)| {
+        //                 acc && left.name_ident == right.name_ident
+        //                     && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
+        //             },
+        //         )
+        // }
         (
             TypeInfo::Struct {
                 name: l_name,

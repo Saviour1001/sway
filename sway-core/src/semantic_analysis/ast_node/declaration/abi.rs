@@ -16,6 +16,9 @@ impl ty::TyAbiDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
 
+        let type_engine = ctx.type_engine;
+        let decl_engine = ctx.decl_engine;
+
         let AbiDeclaration {
             name,
             interface_surface,
@@ -50,7 +53,7 @@ impl ty::TyAbiDeclaration {
                     })
                 }
             }
-            new_interface_surface.push(ctx.decl_engine.insert(method));
+            new_interface_surface.push(decl_engine.insert(type_engine, method));
         }
 
         // Type check the methods.
@@ -70,7 +73,7 @@ impl ty::TyAbiDeclaration {
                     })
                 }
             }
-            new_methods.push(ctx.decl_engine.insert(method));
+            new_methods.push(decl_engine.insert(type_engine, method));
         }
 
         let abi_decl = ty::TyAbiDeclaration {

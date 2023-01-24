@@ -1,4 +1,5 @@
 use crate::{
+    decl_engine::*,
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::*,
@@ -13,6 +14,8 @@ use sway_types::{Ident, Span, Spanned};
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_enum(
     ctx: TypeCheckContext,
+    enum_decl_id: DeclId,
+    enum_type_subst_list: TypeSubstList,
     enum_decl: ty::TyEnumDeclaration,
     enum_name: Ident,
     enum_variant_name: Ident,
@@ -34,6 +37,15 @@ pub(crate) fn instantiate_enum(
         return err(warnings, errors),
         warnings,
         errors
+    );
+
+    let enum_type_id = type_engine.insert(
+        decl_engine,
+        TypeInfo::Enum {
+            name: enum_name.clone(),
+            decl_id: enum_decl_id,
+            subst_list: enum_type_subst_list,
+        },
     );
 
     // Return an error if enum variant is of type unit and it is called with parenthesis.
@@ -60,15 +72,14 @@ pub(crate) fn instantiate_enum(
 
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
-
     match (&args[..], type_engine.get(enum_variant.type_id)) {
         ([], ty) if ty.is_unit() => ok(
             ty::TyExpression {
-                return_type: enum_decl.create_type_id(engines),
+                return_type: enum_type_id,
                 expression: ty::TyExpressionVariant::EnumInstantiation {
+                    type_id: enum_type_id,
                     tag: enum_variant.tag,
                     contents: None,
-                    enum_decl,
                     variant_name: enum_variant.name,
                     enum_instantiation_span: enum_name.span(),
                     variant_instantiation_span: enum_variant_name.span(),
@@ -110,11 +121,11 @@ pub(crate) fn instantiate_enum(
 
             ok(
                 ty::TyExpression {
-                    return_type: enum_decl.create_type_id(engines),
+                    return_type: enum_type_id,
                     expression: ty::TyExpressionVariant::EnumInstantiation {
+                        type_id: enum_type_id,
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),
-                        enum_decl,
                         variant_name: enum_variant.name,
                         enum_instantiation_span: enum_name.span(),
                         variant_instantiation_span: enum_variant_name.span(),

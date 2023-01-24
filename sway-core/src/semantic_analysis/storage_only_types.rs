@@ -148,7 +148,7 @@ fn check_type(
         errors
     );
     let nested_types = check!(
-        type_info.clone().extract_nested_types(ty_engine, &span),
+        type_info.clone().extract_nested_types(engines, &span),
         vec![],
         warnings,
         errors
@@ -286,22 +286,23 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 );
             }
         }
-        ty::TyDeclaration::EnumDeclaration(decl_id) => {
-            let ty::TyEnumDeclaration { variants, .. } = check!(
-                CompileResult::from(decl_engine.get_enum(decl_id.clone(), &decl.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            for variant in variants {
-                check!(
-                    check_type(engines, variant.type_id, variant.span.clone(), false),
-                    continue,
-                    warnings,
-                    errors
-                );
-            }
-        }
+        ty::TyDeclaration::EnumDeclaration(_, _) => todo!(),
+        // ty::TyDeclaration::EnumDeclaration(decl_id) => {
+        //     let ty::TyEnumDeclaration { variants, .. } = check!(
+        //         CompileResult::from(decl_engine.get_enum(decl_id.clone(), &decl.span())),
+        //         return err(warnings, errors),
+        //         warnings,
+        //         errors
+        //     );
+        //     for variant in variants {
+        //         check!(
+        //             check_type(engines, variant.type_id, variant.span.clone(), false),
+        //             continue,
+        //             warnings,
+        //             errors
+        //         );
+        //     }
+        // }
         ty::TyDeclaration::StorageDeclaration(decl_id) => {
             let ty::TyStorageDeclaration { fields, .. } = check!(
                 CompileResult::from(decl_engine.get_storage(decl_id.clone(), &decl.span())),

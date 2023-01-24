@@ -136,7 +136,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         )
                     })
                     .ok(),
-                ty::TyDeclaration::EnumDeclaration(decl_id) => decl_engine
+                ty::TyDeclaration::EnumDeclaration(decl_id, _) => decl_engine
                     .get_enum(decl_id.clone(), &decl.span())
                     .map(|enum_decl| {
                         format_visibility_hover(

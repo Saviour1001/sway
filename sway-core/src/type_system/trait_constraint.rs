@@ -46,11 +46,11 @@ impl SubstTypes for TraitConstraint {
     }
 }
 
-impl SubstTypes2 for TraitConstraint {
-    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+impl FinalizeReplace for TraitConstraint {
+    fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         self.type_arguments
             .iter_mut()
-            .for_each(|x| x.subst2(engines, subst_list));
+            .for_each(|x| x.finalize(engines, subst_list));
     }
 }
 

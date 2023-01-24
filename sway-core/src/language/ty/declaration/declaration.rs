@@ -21,7 +21,7 @@ pub enum TyDeclaration {
     FunctionDeclaration(DeclId),
     TraitDeclaration(DeclId),
     StructDeclaration(DeclId),
-    EnumDeclaration(DeclId),
+    EnumDeclaration(DeclId, TypeSubstList),
     ImplTrait(DeclId),
     AbiDeclaration(DeclId),
     // If type parameters are defined for a function, they are put in the namespace just for
@@ -43,7 +43,7 @@ impl PartialEqWithEngines for TyDeclaration {
             (Self::FunctionDeclaration(x), Self::FunctionDeclaration(y)) => x == y,
             (Self::TraitDeclaration(x), Self::TraitDeclaration(y)) => x == y,
             (Self::StructDeclaration(x), Self::StructDeclaration(y)) => x == y,
-            (Self::EnumDeclaration(x), Self::EnumDeclaration(y)) => x == y,
+            (Self::EnumDeclaration(x, _), Self::EnumDeclaration(y, _)) => x == y,
             (Self::ImplTrait(x), Self::ImplTrait(y)) => x == y,
             (Self::AbiDeclaration(x), Self::AbiDeclaration(y)) => x == y,
             (Self::StorageDeclaration(x), Self::StorageDeclaration(y)) => x == y,
@@ -86,7 +86,7 @@ impl HashWithEngines for TyDeclaration {
                 state.write_u8(5);
                 decl_id.hash(state);
             }
-            TyDeclaration::EnumDeclaration(decl_id) => {
+            TyDeclaration::EnumDeclaration(decl_id, _) => {
                 state.write_u8(6);
                 decl_id.hash(state);
             }
@@ -122,7 +122,7 @@ impl SubstTypes for TyDeclaration {
             FunctionDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
             TraitDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
             StructDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
-            EnumDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
+            EnumDeclaration(ref mut decl_id, _) => decl_id.subst(type_mapping, engines),
             ImplTrait(decl_id) => decl_id.subst(type_mapping, engines),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
@@ -142,7 +142,7 @@ impl ReplaceSelfType for TyDeclaration {
             FunctionDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
             TraitDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
             StructDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
-            EnumDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
+            EnumDeclaration(ref mut decl_id, _) => decl_id.replace_self_type(engines, self_type),
             ImplTrait(decl_id) => decl_id.replace_self_type(engines, self_type),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
@@ -163,7 +163,7 @@ impl Spanned for TyDeclaration {
             FunctionDeclaration(decl_id) => decl_id.span(),
             TraitDeclaration(decl_id) => decl_id.span(),
             StructDeclaration(decl_id) => decl_id.span(),
-            EnumDeclaration(decl_id) => decl_id.span(),
+            EnumDeclaration(decl_id, _) => decl_id.span(),
             AbiDeclaration(decl_id) => decl_id.span(),
             ImplTrait(decl_id) => decl_id.span(),
             StorageDeclaration(decl) => decl.span(),
@@ -225,7 +225,7 @@ impl DisplayWithEngines for TyDeclaration {
                         Err(_) => "unknown struct".into(),
                     }
                 }
-                TyDeclaration::EnumDeclaration(decl_id) => {
+                TyDeclaration::EnumDeclaration(decl_id, _) => {
                     match decl_engine.get_enum(decl_id.clone(), &decl_id.span()) {
                         Ok(TyEnumDeclaration { name, .. }) => name.as_str().into(),
                         Err(_) => "unknown enum".into(),
@@ -299,7 +299,7 @@ impl CollectTypesMetadata for TyDeclaration {
             | StorageDeclaration(_)
             | TraitDeclaration(_)
             | StructDeclaration(_)
-            | EnumDeclaration(_)
+            | EnumDeclaration(_, _)
             | ImplTrait { .. }
             | AbiDeclaration(_)
             | GenericTypeForFunctionScope { .. } => vec![],
@@ -340,7 +340,7 @@ impl GetDeclIdent for TyDeclaration {
                     .unwrap()
                     .name,
             ),
-            TyDeclaration::EnumDeclaration(decl) => Some(
+            TyDeclaration::EnumDeclaration(decl, _) => Some(
                 decl_engine
                     .get_enum(decl.clone(), &decl.span())
                     .unwrap()
@@ -367,17 +367,27 @@ impl GetDeclIdent for TyDeclaration {
 }
 
 impl TyDeclaration {
+    /// Returns `Some(decl_id)` if `self` is an enum declaration, otherwise
+    /// returns `None`.
+    pub(crate) fn unwrap_enum(&self) -> Option<DeclId> {
+        match self {
+            TyDeclaration::EnumDeclaration(decl_id, _) => todo!(),
+            _ => None,
+        }
+    }
+
     /// Retrieves the declaration as an enum declaration.
     ///
     /// Returns an error if `self` is not a [TyEnumDeclaration].
     pub(crate) fn expect_enum(
-        &self,
+        self,
         decl_engine: &DeclEngine,
         access_span: &Span,
-    ) -> CompileResult<TyEnumDeclaration> {
+    ) -> CompileResult<(TyEnumDeclaration, DeclId, TypeSubstList)> {
         match self {
-            TyDeclaration::EnumDeclaration(decl_id) => {
+            TyDeclaration::EnumDeclaration(decl_id, type_subst_list) => {
                 CompileResult::from(decl_engine.get_enum(decl_id.clone(), access_span))
+                    .map(|decl| (decl, decl_id.clone(), type_subst_list))
             }
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => err(
@@ -528,7 +538,7 @@ impl TyDeclaration {
             FunctionDeclaration(_) => "function",
             TraitDeclaration(_) => "trait",
             StructDeclaration(_) => "struct",
-            EnumDeclaration(_) => "enum",
+            EnumDeclaration(_, _) => "enum",
             ImplTrait { .. } => "impl trait",
             AbiDeclaration(..) => "abi",
             GenericTypeForFunctionScope { .. } => "generic type parameter",
@@ -542,7 +552,7 @@ impl TyDeclaration {
         use TyDeclaration::*;
         match self {
             StructDeclaration(_) => "struct",
-            EnumDeclaration(_) => "enum",
+            EnumDeclaration(_, _) => "enum",
             TraitDeclaration(_) => "trait",
             AbiDeclaration(_) => "abi",
             StorageDeclaration(_) => "contract_storage",
@@ -582,14 +592,21 @@ impl TyDeclaration {
                 );
                 decl.create_type_id(engines)
             }
-            TyDeclaration::EnumDeclaration(decl_id) => {
+            TyDeclaration::EnumDeclaration(decl_id, type_subst_list) => {
                 let decl = check!(
                     CompileResult::from(decl_engine.get_enum(decl_id.clone(), access_span)),
                     return err(warnings, errors),
                     warnings,
                     errors
                 );
-                decl.create_type_id(engines)
+                type_engine.insert(
+                    decl_engine,
+                    TypeInfo::Enum {
+                        name: decl.name,
+                        decl_id: decl_id.clone(),
+                        subst_list: type_subst_list.clone(),
+                    },
+                )
             }
             TyDeclaration::StorageDeclaration(decl_id) => {
                 let storage_decl = check!(
@@ -650,7 +667,7 @@ impl TyDeclaration {
                 );
                 visibility
             }
-            EnumDeclaration(decl_id) => {
+            EnumDeclaration(decl_id, _) => {
                 let TyEnumDeclaration { visibility, .. } = check!(
                     CompileResult::from(decl_engine.get_enum(decl_id.clone(), &decl_id.span())),
                     return err(warnings, errors),

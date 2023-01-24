@@ -106,9 +106,10 @@ fn convert_resolved_type(
                 .collect::<Vec<_>>()
                 .as_slice(),
         )?,
-        TypeInfo::Enum { variant_types, .. } => {
-            create_enum_aggregate(type_engine, context, variant_types)?
-        }
+        TypeInfo::Enum { .. } => todo!(),
+        // TypeInfo::Enum { variant_types, .. } => {
+        //     create_enum_aggregate(type_engine, context, variant_types)?
+        // }
         TypeInfo::Array(elem_type, length) => {
             let elem_type =
                 convert_resolved_typeid(type_engine, context, &elem_type.type_id, span)?;
@@ -137,6 +138,7 @@ fn convert_resolved_type(
         TypeInfo::Unknown => reject_type!("Unknown"),
         TypeInfo::UnknownGeneric { .. } => reject_type!("Generic"),
         TypeInfo::Placeholder(_) => reject_type!("Placeholder"),
+        TypeInfo::TypeParam(_) => reject_type!("TypeParam"),
         TypeInfo::ErrorRecovery => reject_type!("Error recovery"),
         TypeInfo::Storage { .. } => reject_type!("Storage"),
     })

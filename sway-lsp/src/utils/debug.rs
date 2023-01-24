@@ -93,7 +93,7 @@ pub(crate) fn print_decl_engine_types(
                         .unwrap();
                     format!("{:#?}", struct_decl)
                 }
-                ty::TyDeclaration::EnumDeclaration(decl_id) => {
+                ty::TyDeclaration::EnumDeclaration(decl_id, _) => {
                     let enum_decl = decl_engine
                         .get_enum(decl_id.clone(), &decl_id.span())
                         .unwrap();

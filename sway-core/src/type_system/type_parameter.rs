@@ -62,12 +62,12 @@ impl SubstTypes for TypeParameter {
     }
 }
 
-impl SubstTypes2 for TypeParameter {
-    fn subst_inner2(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
-        self.type_id.subst2(engines, subst_list);
+impl FinalizeReplace for TypeParameter {
+    fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.type_id.finalize(engines, subst_list);
         self.trait_constraints
             .iter_mut()
-            .for_each(|x| x.subst2(engines, subst_list));
+            .for_each(|x| x.finalize(engines, subst_list));
     }
 }
 
@@ -99,10 +99,54 @@ impl fmt::Debug for TypeParameter {
 }
 
 impl TypeParameter {
-    pub(crate) fn type_check(
+    /// Given a list of [TypeParameter], type check the type parameters and
+    /// insert them into the namespace.
+    pub(crate) fn type_check_type_parameters(
+        mut ctx: TypeCheckContext,
+        type_parameters: Vec<TypeParameter>,
+        where_clauses_allowed: bool,
+    ) -> CompileResult<(Vec<TypeParameter>, TypeSubstList)> {
+        let mut warnings = vec![];
+        let mut errors = vec![];
+
+        let mut subst_list_refs = vec![];
+        let mut type_subst_stack = ctx
+            .namespace
+            .get_type_subst_stack()
+            .last()
+            .cloned()
+            .unwrap_or_default();
+
+        for type_param in type_parameters.into_iter() {
+            if !where_clauses_allowed && !type_param.trait_constraints.is_empty() {
+                errors.push(CompileError::WhereClauseNotYetSupported {
+                    span: type_param.trait_constraints_span,
+                });
+                return err(warnings, errors);
+            }
+            let (type_subst, subst_list_ref) = check!(
+                TypeParameter::type_check(ctx.by_ref(), type_param, type_subst_stack.len()),
+                continue,
+                warnings,
+                errors
+            );
+            type_subst_stack.push(type_subst);
+            subst_list_refs.push(subst_list_ref);
+        }
+
+        if errors.is_empty() {
+            ok((subst_list_refs, type_subst_stack), warnings, errors)
+        } else {
+            err(warnings, errors)
+        }
+    }
+
+    /// Type checks a single [TypeParameter], including its [TraitConstraint]s.
+    fn type_check(
         mut ctx: TypeCheckContext,
         type_parameter: TypeParameter,
-    ) -> CompileResult<Self> {
+        n: usize,
+    ) -> CompileResult<(TypeParameter, TypeParameter)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -129,42 +173,58 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = type_engine.insert(
-            decl_engine,
-            TypeInfo::UnknownGeneric {
-                name: name_ident.clone(),
-                trait_constraints: VecSet(trait_constraints.clone()),
-            },
-        );
+        // Create the [TypeParameter] to go in the type subst list in the type
+        // engine.
+        let type_subst = TypeParameter {
+            name_ident: name_ident.clone(),
+            type_id: type_engine.insert(
+                decl_engine,
+                TypeInfo::UnknownGeneric {
+                    name: name_ident.clone(),
+                    trait_constraints: VecSet(trait_constraints.clone()),
+                },
+            ),
+            initial_type_id,
+            trait_constraints,
+            trait_constraints_span,
+        };
+
+        // Create the [TypeParameter] that refers to the type subst list to go
+        // in the AST.
+        let subst_list_ref_id = type_engine.insert(decl_engine, TypeInfo::TypeParam(n));
+        let subst_list_ref = TypeParameter {
+            name_ident: name_ident.clone(),
+            type_id: subst_list_ref_id,
+            initial_type_id,
+            trait_constraints,
+            trait_constraints_span,
+        };
+        let subst_list_ref_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
+            name: name_ident.clone(),
+            type_id: subst_list_ref_id,
+        };
 
         // Insert the trait constraints into the namespace.
         for trait_constraint in trait_constraints.iter() {
             check!(
-                TraitConstraint::insert_into_namespace(ctx.by_ref(), type_id, trait_constraint),
+                TraitConstraint::insert_into_namespace(
+                    ctx.by_ref(),
+                    subst_list_ref_id,
+                    trait_constraint
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
         }
 
-        // Insert the type parameter into the namespace as a dummy type
-        // declaration.
-        let type_parameter_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
-            name: name_ident.clone(),
-            type_id,
-        };
+        // Insert a reference to the type parameter into the namespace as a
+        // dummy type declaration.
         ctx.namespace
-            .insert_symbol(name_ident.clone(), type_parameter_decl)
+            .insert_symbol(name_ident.clone(), subst_list_ref_decl)
             .ok(&mut warnings, &mut errors);
 
-        let type_parameter = TypeParameter {
-            name_ident,
-            type_id,
-            initial_type_id,
-            trait_constraints,
-            trait_constraints_span,
-        };
-        ok(type_parameter, warnings, errors)
+        ok((type_subst, subst_list_ref), warnings, errors)
     }
 
     /// Returns the initial type ID of a TypeParameter. Also updates the provided list of types to

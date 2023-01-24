@@ -205,46 +205,46 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = ctx
-                    .decl_engine
-                    .insert(new_copy)
+                let new_id = decl_engine
+                    .insert(type_engine, new_copy)
                     .with_parent(ctx.decl_engine, original_id);
 
                 ty::TyDeclaration::FunctionDeclaration(new_id)
             }
-            ty::TyDeclaration::EnumDeclaration(original_id) => {
-                // get the copy from the declaration engine
-                let mut new_copy = check!(
-                    CompileResult::from(decl_engine.get_enum(original_id, &self.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+            ty::TyDeclaration::EnumDeclaration(_, _) => todo!(),
+            // ty::TyDeclaration::EnumDeclaration(original_id) => {
+            //     // get the copy from the declaration engine
+            //     let mut new_copy = check!(
+            //         CompileResult::from(decl_engine.get_enum(original_id, &self.span())),
+            //         return err(warnings, errors),
+            //         warnings,
+            //         errors
+            //     );
 
-                // monomorphize the copy, in place
-                check!(
-                    ctx.monomorphize(
-                        &mut new_copy,
-                        &mut self.type_arguments,
-                        EnforceTypeArguments::No,
-                        &self.span
-                    ),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+            //     // monomorphize the copy, in place
+            //     check!(
+            //         ctx.monomorphize(
+            //             &mut new_copy,
+            //             &mut self.type_arguments,
+            //             EnforceTypeArguments::No,
+            //             &self.span
+            //         ),
+            //         return err(warnings, errors),
+            //         warnings,
+            //         errors
+            //     );
 
-                // take any trait methods that apply to this type and copy them to the new type
-                ctx.namespace.insert_trait_implementation_for_type(
-                    engines,
-                    new_copy.create_type_id(engines),
-                );
+            //     // take any trait methods that apply to this type and copy them to the new type
+            //     ctx.namespace.insert_trait_implementation_for_type(
+            //         engines,
+            //         new_copy.create_type_id(engines),
+            //     );
 
-                // insert the new copy into the declaration engine
-                let new_id = ctx.decl_engine.insert(new_copy);
+            //     // insert the new copy into the declaration engine
+            //     let new_id = ctx.decl_engine.insert(type_engine, new_copy);
 
-                ty::TyDeclaration::EnumDeclaration(new_id)
-            }
+            //     ty::TyDeclaration::EnumDeclaration(new_id)
+            // }
             ty::TyDeclaration::StructDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
@@ -274,7 +274,7 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = ctx.decl_engine.insert(new_copy);
+                let new_id = ctx.decl_engine.insert(type_engine, new_copy);
 
                 ty::TyDeclaration::StructDeclaration(new_id)
             }

@@ -38,6 +38,12 @@ pub struct Items {
     pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     pub(crate) declared_storage: Option<DeclId>,
+
+    /// A stack of [TypeSubstList] for use during type inference. During type
+    /// inference, any blocks that contain type params are conjoined with any
+    /// preceding type params, such that any local instances of references to
+    /// type params refer to the [TypeSubstList] of the immediate parent block.
+    pub(crate) type_subst_stack: Vec<TypeSubstList>,
 }
 
 impl Items {
@@ -349,5 +355,13 @@ impl Items {
             }
         }
         ok((symbol, parent_rover), warnings, errors)
+    }
+
+    pub(crate) fn get_type_subst_stack(&self) -> &Vec<TypeSubstList> {
+        &self.type_subst_stack
+    }
+
+    pub(crate) fn get_mut_type_subst_stack(&mut self) -> &mut Vec<TypeSubstList> {
+        &mut self.type_subst_stack
     }
 }

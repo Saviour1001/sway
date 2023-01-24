@@ -26,7 +26,7 @@ impl PartialEqWithEngines for TyAbiDeclaration {
 }
 
 impl CreateTypeId for TyAbiDeclaration {
-    fn create_type_id(&self, engines: Engines<'_>) -> TypeId {
+    fn create_type_id(&self, engines: Engines<'_>, subst_list: TypeSubstList) -> TypeId {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let ty = TypeInfo::ContractCaller {

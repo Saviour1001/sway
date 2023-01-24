@@ -995,7 +995,7 @@ impl ty::TyExpression {
             ctx.namespace
                 .resolve_call_path(&probe_call_path)
                 .flat_map(|decl| decl.expect_enum(decl_engine, &before.inner.span()))
-                .flat_map(|decl| decl.expect_variant_from_name(&suffix).map(drop))
+                .flat_map(|(decl, _, _)| decl.expect_variant_from_name(&suffix).map(drop))
                 .value
                 .is_none()
         };
@@ -1125,11 +1125,21 @@ impl ty::TyExpression {
                 span: call_path_binding.span,
             };
             TypeBinding::type_check_with_ident(&mut call_path_binding, ctx.by_ref())
-                .flat_map(|unknown_decl| {
-                    unknown_decl.expect_enum(decl_engine, &call_path_binding.span())
-                })
                 .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
-                .map(|enum_decl| (enum_decl, enum_name, variant_name))
+                .and_then(|unknown_decl| {
+                    unknown_decl
+                        .expect_enum(decl_engine, &call_path_binding.span)
+                        .ok(&mut enum_probe_warnings, &mut enum_probe_errors)
+                })
+                .map(|(enum_decl, enum_decl_id, enum_type_subst_list)| {
+                    (
+                        enum_decl_id,
+                        enum_decl,
+                        enum_type_subst_list,
+                        enum_name,
+                        variant_name,
+                    )
+                })
         };
 
         // Check if this could be a constant
@@ -1147,12 +1157,16 @@ impl ty::TyExpression {
 
         // compare the results of the checks
         let exp = match (is_module, maybe_function, maybe_enum, maybe_const) {
-            (false, None, Some((enum_decl, enum_name, variant_name)), None) => {
+            (false, None, Some(maybe_enum), None) => {
+                let (enum_decl_id, enum_decl, enum_type_subst_list, enum_name, variant_name) =
+                    maybe_enum;
                 warnings.append(&mut enum_probe_warnings);
                 errors.append(&mut enum_probe_errors);
                 check!(
                     instantiate_enum(
                         ctx,
+                        enum_decl_id,
+                        enum_type_subst_list,
                         enum_decl,
                         enum_name,
                         variant_name,
@@ -1336,7 +1350,7 @@ impl ty::TyExpression {
             );
             abi_methods.push(
                 decl_engine
-                    .insert(method.to_dummy_func(Mode::ImplAbiFn))
+                    .insert(type_engine, method.to_dummy_func(Mode::ImplAbiFn))
                     .with_parent(decl_engine, decl_id),
             );
         }

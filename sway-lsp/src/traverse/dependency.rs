@@ -62,7 +62,7 @@ impl<'a> Dependency<'a> {
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => decl_engine
                     .get_constant(decl_id.clone(), &declaration.span())
                     .map(|decl| decl.name),
-                ty::TyDeclaration::EnumDeclaration(decl_id) => decl_engine
+                ty::TyDeclaration::EnumDeclaration(decl_id, _) => decl_engine
                     .get_enum(decl_id.clone(), &declaration.span())
                     .map(|decl| decl.name),
                 _ => return,
