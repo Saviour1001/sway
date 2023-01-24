@@ -269,23 +269,25 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 };
             }
         }
-        ty::TyDeclaration::StructDeclaration(decl_id) => {
-            let ty::TyStructDeclaration { fields, .. } = check!(
-                CompileResult::from(decl_engine.get_struct(decl_id.clone(), &decl_id.span())),
-                return err(warnings, errors),
-                warnings,
-                errors,
-            );
-            for field in fields {
-                check!(
-                    check_type(engines, field.type_id, field.span.clone(), false),
-                    continue,
-                    warnings,
-                    errors
-                );
-            }
+        ty::TyDeclaration::StructDeclaration(_, _) | ty::TyDeclaration::EnumDeclaration(_, _) => {
+            todo!()
         }
-        ty::TyDeclaration::EnumDeclaration(_, _) => todo!(),
+        // ty::TyDeclaration::StructDeclaration(decl_id) => {
+        //     let ty::TyStructDeclaration { fields, .. } = check!(
+        //         CompileResult::from(decl_engine.get_struct(decl_id.clone(), &decl_id.span())),
+        //         return err(warnings, errors),
+        //         warnings,
+        //         errors,
+        //     );
+        //     for field in fields {
+        //         check!(
+        //             check_type(engines, field.type_id, field.span.clone(), false),
+        //             continue,
+        //             warnings,
+        //             errors
+        //         );
+        //     }
+        // }
         // ty::TyDeclaration::EnumDeclaration(decl_id) => {
         //     let ty::TyEnumDeclaration { variants, .. } = check!(
         //         CompileResult::from(decl_engine.get_enum(decl_id.clone(), &decl.span())),

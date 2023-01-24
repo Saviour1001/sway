@@ -283,8 +283,8 @@ impl ty::TyDeclaration {
                 );
                 let name = decl.name.clone();
                 let decl_id = decl_engine.insert(type_engine, decl);
-                let decl = ty::TyDeclaration::StructDeclaration(decl_id);
-                // insert the struct decl into namespace
+                let decl: ty::TyDeclaration = todo!(); //ty::TyDeclaration::StructDeclaration(decl_id);
+                                                       // insert the struct decl into namespace
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),

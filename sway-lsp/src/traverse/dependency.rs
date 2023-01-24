@@ -50,7 +50,7 @@ impl<'a> Dependency<'a> {
 
             if let Ok(ident) = match declaration {
                 ty::TyDeclaration::VariableDeclaration(variable) => Ok(variable.name.clone()),
-                ty::TyDeclaration::StructDeclaration(decl_id) => decl_engine
+                ty::TyDeclaration::StructDeclaration(decl_id, _) => decl_engine
                     .get_struct(decl_id.clone(), &declaration.span())
                     .map(|decl| decl.name),
                 ty::TyDeclaration::TraitDeclaration(decl_id) => decl_engine

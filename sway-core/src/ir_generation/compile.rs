@@ -278,7 +278,7 @@ fn compile_declarations(
                 //)?,
             }
 
-            ty::TyDeclaration::StructDeclaration(_)
+            ty::TyDeclaration::StructDeclaration(_, _)
             | ty::TyDeclaration::EnumDeclaration(_, _)
             | ty::TyDeclaration::TraitDeclaration(_)
             | ty::TyDeclaration::VariableDeclaration(_)

@@ -116,7 +116,7 @@ fn hover_format(engines: Engines<'_>, token: &Token, ident: &Ident) -> lsp_types
                         &token_name,
                     ))
                 }
-                ty::TyDeclaration::StructDeclaration(decl_id) => decl_engine
+                ty::TyDeclaration::StructDeclaration(decl_id, _) => decl_engine
                     .get_struct(decl_id.clone(), &decl.span())
                     .map(|struct_decl| {
                         format_visibility_hover(

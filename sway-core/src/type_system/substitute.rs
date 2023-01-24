@@ -190,7 +190,7 @@ impl std::iter::FromIterator<TypeParameter> for TypeSubstList {
 impl EqWithEngines for TypeSubstList {}
 impl PartialEqWithEngines for TypeSubstList {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
-        self.len() == other.len()
+        self.list.len() == other.list.len()
             && self
                 .list
                 .iter()

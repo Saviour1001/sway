@@ -214,6 +214,7 @@ fn entry_points(
                         content:
                             ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(
                                 decl_id,
+                                _,
                             )),
                         ..
                     }) => {
@@ -407,12 +408,12 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_abi_declaration(engines, &abi_decl, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
-        StructDeclaration(decl_id) => {
-            let struct_decl = decl_engine.get_struct(decl_id.clone(), &span)?;
-            connect_struct_declaration(engines, &struct_decl, graph, entry_node, tree_type);
-            Ok(leaves.to_vec())
-        }
-        EnumDeclaration(_, _) => todo!(),
+        StructDeclaration(_, _) | EnumDeclaration(_, _) => todo!(),
+        // StructDeclaration(decl_id) => {
+        //     let struct_decl = decl_engine.get_struct(decl_id.clone(), &span)?;
+        //     connect_struct_declaration(engines, &struct_decl, graph, entry_node, tree_type);
+        //     Ok(leaves.to_vec())
+        // }
         // EnumDeclaration(decl_id) => {
         //     let enum_decl = decl_engine.get_enum(decl_id.clone(), &span)?;
         //     connect_enum_declaration(engines, &enum_decl, graph, entry_node);
@@ -833,12 +834,13 @@ fn get_trait_fn_node_index<'a, 'cfg>(
                     .namespace
                     .find_trait_method(&trait_decl.name.into(), &fn_decl.name))
             }
-            ty::TyDeclaration::StructDeclaration(decl) => {
-                let struct_decl = decl_engine.get_struct(decl, &expression_span)?;
-                Ok(graph
-                    .namespace
-                    .find_trait_method(&struct_decl.name.into(), &fn_decl.name))
-            }
+            ty::TyDeclaration::StructDeclaration(_, _) => todo!(),
+            // ty::TyDeclaration::StructDeclaration(decl) => {
+            //     let struct_decl = decl_engine.get_struct(decl, &expression_span)?;
+            //     Ok(graph
+            //         .namespace
+            //         .find_trait_method(&struct_decl.name.into(), &fn_decl.name))
+            // }
             ty::TyDeclaration::ImplTrait(decl) => {
                 let impl_trait = decl_engine.get_impl_trait(decl, &expression_span)?;
                 Ok(graph
@@ -1648,7 +1650,7 @@ fn construct_dead_code_warning_from_node(
         }
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(decl_id)),
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::StructDeclaration(decl_id, _)),
             span,
         } => {
             let warning_span = match decl_engine.get_struct(decl_id.clone(), span) {

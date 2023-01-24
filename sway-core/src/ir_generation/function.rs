@@ -158,13 +158,14 @@ impl<'eng> FnCompiler<'eng> {
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::StructDeclaration(_) => {
-                    Err(CompileError::UnexpectedDeclaration {
-                        decl_type: "struct",
-                        span: ast_node.span.clone(),
-                    })
-                }
-                ty::TyDeclaration::EnumDeclaration(_, _) => todo!(),
+                ty::TyDeclaration::StructDeclaration(_, _)
+                | ty::TyDeclaration::EnumDeclaration(_, _) => todo!(),
+                // ty::TyDeclaration::StructDeclaration(_) => {
+                //     Err(CompileError::UnexpectedDeclaration {
+                //         decl_type: "struct",
+                //         span: ast_node.span.clone(),
+                //     })
+                // }
                 // ty::TyDeclaration::EnumDeclaration(decl_id) => {
                 //     let ted = self.decl_engine.get_enum(decl_id.clone(), &ast_node.span)?;
                 //     create_enum_aggregate(self.type_engine, context, &ted.variants).map(|_| ())?;

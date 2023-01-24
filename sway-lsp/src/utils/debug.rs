@@ -87,7 +87,7 @@ pub(crate) fn print_decl_engine_types(
                         .unwrap();
                     format!("{:#?}", trait_decl)
                 }
-                ty::TyDeclaration::StructDeclaration(decl_id) => {
+                ty::TyDeclaration::StructDeclaration(decl_id, _) => {
                     let struct_decl = decl_engine
                         .get_struct(decl_id.clone(), &decl_id.span())
                         .unwrap();

@@ -20,7 +20,7 @@ pub enum TyDeclaration {
     ConstantDeclaration(DeclId),
     FunctionDeclaration(DeclId),
     TraitDeclaration(DeclId),
-    StructDeclaration(DeclId),
+    StructDeclaration(DeclId, TypeSubstList),
     EnumDeclaration(DeclId, TypeSubstList),
     ImplTrait(DeclId),
     AbiDeclaration(DeclId),
@@ -39,8 +39,12 @@ impl PartialEqWithEngines for TyDeclaration {
             (Self::ConstantDeclaration(x), Self::ConstantDeclaration(y)) => x == y,
             (Self::FunctionDeclaration(x), Self::FunctionDeclaration(y)) => x == y,
             (Self::TraitDeclaration(x), Self::TraitDeclaration(y)) => x == y,
-            (Self::StructDeclaration(x), Self::StructDeclaration(y)) => x == y,
-            (Self::EnumDeclaration(x, _), Self::EnumDeclaration(y, _)) => x == y,
+            (Self::StructDeclaration(x1, x2), Self::StructDeclaration(y1, y2)) => {
+                x1 == y1 && x2.eq(y2, type_engine)
+            }
+            (Self::EnumDeclaration(x1, x2), Self::EnumDeclaration(y1, y2)) => {
+                x1 == y1 && x2.eq(y2, type_engine)
+            }
             (Self::ImplTrait(x), Self::ImplTrait(y)) => x == y,
             (Self::AbiDeclaration(x), Self::AbiDeclaration(y)) => x == y,
             (Self::StorageDeclaration(x), Self::StorageDeclaration(y)) => x == y,
@@ -79,13 +83,15 @@ impl HashWithEngines for TyDeclaration {
                 state.write_u8(4);
                 decl_id.hash(state);
             }
-            TyDeclaration::StructDeclaration(decl_id) => {
+            TyDeclaration::StructDeclaration(decl_id, subst_list) => {
                 state.write_u8(5);
                 decl_id.hash(state);
+                subst_list.hash(state, type_engine);
             }
-            TyDeclaration::EnumDeclaration(decl_id, _) => {
+            TyDeclaration::EnumDeclaration(decl_id, subst_list) => {
                 state.write_u8(6);
                 decl_id.hash(state);
+                subst_list.hash(state, type_engine);
             }
             TyDeclaration::ImplTrait(decl_id) => {
                 state.write_u8(7);
@@ -118,8 +124,9 @@ impl SubstTypes for TyDeclaration {
             VariableDeclaration(ref mut var_decl) => var_decl.subst(type_mapping, engines),
             FunctionDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
             TraitDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
-            StructDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
-            EnumDeclaration(ref mut decl_id, _) => decl_id.subst(type_mapping, engines),
+            StructDeclaration(_, _) | EnumDeclaration(_, _) => todo!(),
+            // StructDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
+            // EnumDeclaration(ref mut decl_id, _) => decl_id.subst(type_mapping, engines),
             ImplTrait(decl_id) => decl_id.subst(type_mapping, engines),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
@@ -138,8 +145,9 @@ impl ReplaceSelfType for TyDeclaration {
             VariableDeclaration(ref mut var_decl) => var_decl.replace_self_type(engines, self_type),
             FunctionDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
             TraitDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
-            StructDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
-            EnumDeclaration(ref mut decl_id, _) => decl_id.replace_self_type(engines, self_type),
+            StructDeclaration(_, _) | EnumDeclaration(_, _) => todo!(),
+            // StructDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
+            // EnumDeclaration(ref mut decl_id, _) => decl_id.replace_self_type(engines, self_type),
             ImplTrait(decl_id) => decl_id.replace_self_type(engines, self_type),
             // generics in an ABI is unsupported by design
             AbiDeclaration(..)
@@ -159,8 +167,9 @@ impl Spanned for TyDeclaration {
             ConstantDeclaration(decl_id) => decl_id.span(),
             FunctionDeclaration(decl_id) => decl_id.span(),
             TraitDeclaration(decl_id) => decl_id.span(),
-            StructDeclaration(decl_id) => decl_id.span(),
-            EnumDeclaration(decl_id, _) => decl_id.span(),
+            StructDeclaration(_, _) | EnumDeclaration(_, _) => todo!(),
+            // StructDeclaration(decl_id) => decl_id.span(),
+            // EnumDeclaration(decl_id, _) => decl_id.span(),
             AbiDeclaration(decl_id) => decl_id.span(),
             ImplTrait(decl_id) => decl_id.span(),
             StorageDeclaration(decl) => decl.span(),
@@ -216,18 +225,20 @@ impl DisplayWithEngines for TyDeclaration {
                         Err(_) => "unknown trait".into(),
                     }
                 }
-                TyDeclaration::StructDeclaration(decl_id) => {
-                    match decl_engine.get_struct(decl_id.clone(), &decl_id.span()) {
-                        Ok(TyStructDeclaration { name, .. }) => name.as_str().into(),
-                        Err(_) => "unknown struct".into(),
-                    }
-                }
-                TyDeclaration::EnumDeclaration(decl_id, _) => {
-                    match decl_engine.get_enum(decl_id.clone(), &decl_id.span()) {
-                        Ok(TyEnumDeclaration { name, .. }) => name.as_str().into(),
-                        Err(_) => "unknown enum".into(),
-                    }
-                }
+                TyDeclaration::StructDeclaration(_, _) | TyDeclaration::EnumDeclaration(_, _) =>
+                    todo!(),
+                // TyDeclaration::StructDeclaration(decl_id) => {
+                //     match decl_engine.get_struct(decl_id.clone(), &decl_id.span()) {
+                //         Ok(TyStructDeclaration { name, .. }) => name.as_str().into(),
+                //         Err(_) => "unknown struct".into(),
+                //     }
+                // }
+                // TyDeclaration::EnumDeclaration(decl_id, _) => {
+                //     match decl_engine.get_enum(decl_id.clone(), &decl_id.span()) {
+                //         Ok(TyEnumDeclaration { name, .. }) => name.as_str().into(),
+                //         Err(_) => "unknown enum".into(),
+                //     }
+                // }
                 _ => String::new(),
             }
         )
@@ -295,7 +306,7 @@ impl CollectTypesMetadata for TyDeclaration {
             ErrorRecovery(_)
             | StorageDeclaration(_)
             | TraitDeclaration(_)
-            | StructDeclaration(_)
+            | StructDeclaration(_, _)
             | EnumDeclaration(_, _)
             | ImplTrait { .. }
             | AbiDeclaration(_)
@@ -331,18 +342,21 @@ impl GetDeclIdent for TyDeclaration {
                     .unwrap()
                     .name,
             ),
-            TyDeclaration::StructDeclaration(decl) => Some(
-                decl_engine
-                    .get_struct(decl.clone(), &decl.span())
-                    .unwrap()
-                    .name,
-            ),
-            TyDeclaration::EnumDeclaration(decl, _) => Some(
-                decl_engine
-                    .get_enum(decl.clone(), &decl.span())
-                    .unwrap()
-                    .name,
-            ),
+            TyDeclaration::StructDeclaration(_, _) | TyDeclaration::EnumDeclaration(_, _) => {
+                todo!()
+            }
+            // TyDeclaration::StructDeclaration(decl) => Some(
+            //     decl_engine
+            //         .get_struct(decl.clone(), &decl.span())
+            //         .unwrap()
+            //         .name,
+            // ),
+            // TyDeclaration::EnumDeclaration(decl, _) => Some(
+            //     decl_engine
+            //         .get_enum(decl.clone(), &decl.span())
+            //         .unwrap()
+            //         .name,
+            // ),
             TyDeclaration::ImplTrait(decl) => Some(
                 decl_engine
                     .get_impl_trait(decl.clone(), &decl.span())
@@ -405,27 +419,28 @@ impl TyDeclaration {
         decl_engine: &DeclEngine,
         access_span: &Span,
     ) -> CompileResult<TyStructDeclaration> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-        match self {
-            TyDeclaration::StructDeclaration(decl_id) => {
-                let decl = check!(
-                    CompileResult::from(decl_engine.get_struct(decl_id.clone(), access_span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                ok(decl, warnings, errors)
-            }
-            TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
-            decl => {
-                errors.push(CompileError::DeclIsNotAStruct {
-                    actually: decl.friendly_name().to_string(),
-                    span: decl.span(),
-                });
-                err(warnings, errors)
-            }
-        }
+        todo!()
+        // let mut warnings = vec![];
+        // let mut errors = vec![];
+        // match self {
+        //     TyDeclaration::StructDeclaration(decl_id) => {
+        //         let decl = check!(
+        //             CompileResult::from(decl_engine.get_struct(decl_id.clone(), access_span)),
+        //             return err(warnings, errors),
+        //             warnings,
+        //             errors
+        //         );
+        //         ok(decl, warnings, errors)
+        //     }
+        //     TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
+        //     decl => {
+        //         errors.push(CompileError::DeclIsNotAStruct {
+        //             actually: decl.friendly_name().to_string(),
+        //             span: decl.span(),
+        //         });
+        //         err(warnings, errors)
+        //     }
+        // }
     }
 
     /// Retrieves the declaration as a function declaration.
@@ -534,7 +549,7 @@ impl TyDeclaration {
             ConstantDeclaration(_) => "constant",
             FunctionDeclaration(_) => "function",
             TraitDeclaration(_) => "trait",
-            StructDeclaration(_) => "struct",
+            StructDeclaration(_, _) => "struct",
             EnumDeclaration(_, _) => "enum",
             ImplTrait { .. } => "impl trait",
             AbiDeclaration(..) => "abi",
@@ -548,7 +563,7 @@ impl TyDeclaration {
     pub fn doc_name(&self) -> &'static str {
         use TyDeclaration::*;
         match self {
-            StructDeclaration(_) => "struct",
+            StructDeclaration(_, _) => "struct",
             EnumDeclaration(_, _) => "enum",
             TraitDeclaration(_) => "trait",
             AbiDeclaration(_) => "abi",
@@ -580,32 +595,35 @@ impl TyDeclaration {
                 );
                 decl.return_type
             }
-            TyDeclaration::StructDeclaration(decl_id) => {
-                let decl = check!(
-                    CompileResult::from(decl_engine.get_struct(decl_id.clone(), &self.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
+            TyDeclaration::StructDeclaration(_, _) | TyDeclaration::EnumDeclaration(_, _) => {
                 todo!()
-                // decl.create_type_id(engines)
             }
-            TyDeclaration::EnumDeclaration(decl_id, type_subst_list) => {
-                let decl = check!(
-                    CompileResult::from(decl_engine.get_enum(decl_id.clone(), access_span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                type_engine.insert(
-                    decl_engine,
-                    TypeInfo::Enum {
-                        name: decl.name,
-                        decl_id: decl_id.clone(),
-                        subst_list: type_subst_list.clone(),
-                    },
-                )
-            }
+            // TyDeclaration::StructDeclaration(decl_id) => {
+            //     let decl = check!(
+            //         CompileResult::from(decl_engine.get_struct(decl_id.clone(), &self.span())),
+            //         return err(warnings, errors),
+            //         warnings,
+            //         errors
+            //     );
+            //     todo!()
+            //     // decl.create_type_id(engines)
+            // }
+            // TyDeclaration::EnumDeclaration(decl_id, type_subst_list) => {
+            //     let decl = check!(
+            //         CompileResult::from(decl_engine.get_enum(decl_id.clone(), access_span)),
+            //         return err(warnings, errors),
+            //         warnings,
+            //         errors
+            //     );
+            //     type_engine.insert(
+            //         decl_engine,
+            //         TypeInfo::Enum {
+            //             name: decl.name,
+            //             decl_id: decl_id.clone(),
+            //             subst_list: type_subst_list.clone(),
+            //         },
+            //     )
+            // }
             TyDeclaration::StorageDeclaration(decl_id) => {
                 let storage_decl = check!(
                     CompileResult::from(decl_engine.get_storage(decl_id.clone(), &self.span())),
@@ -656,24 +674,27 @@ impl TyDeclaration {
                 );
                 visibility
             }
-            StructDeclaration(decl_id) => {
-                let TyStructDeclaration { visibility, .. } = check!(
-                    CompileResult::from(decl_engine.get_struct(decl_id.clone(), &decl_id.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                visibility
+            TyDeclaration::StructDeclaration(_, _) | TyDeclaration::EnumDeclaration(_, _) => {
+                todo!()
             }
-            EnumDeclaration(decl_id, _) => {
-                let TyEnumDeclaration { visibility, .. } = check!(
-                    CompileResult::from(decl_engine.get_enum(decl_id.clone(), &decl_id.span())),
-                    return err(warnings, errors),
-                    warnings,
-                    errors
-                );
-                visibility
-            }
+            // StructDeclaration(decl_id) => {
+            //     let TyStructDeclaration { visibility, .. } = check!(
+            //         CompileResult::from(decl_engine.get_struct(decl_id.clone(), &decl_id.span())),
+            //         return err(warnings, errors),
+            //         warnings,
+            //         errors
+            //     );
+            //     visibility
+            // }
+            // EnumDeclaration(decl_id, _) => {
+            //     let TyEnumDeclaration { visibility, .. } = check!(
+            //         CompileResult::from(decl_engine.get_enum(decl_id.clone(), &decl_id.span())),
+            //         return err(warnings, errors),
+            //         warnings,
+            //         errors
+            //     );
+            //     visibility
+            // }
             FunctionDeclaration(decl_id) => {
                 let TyFunctionDeclaration { visibility, .. } = check!(
                     CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),

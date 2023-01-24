@@ -370,7 +370,7 @@ impl ty::TyImplTrait {
                 // nested functions etc. We just ignore them.
                 ty::TyDeclaration::FunctionDeclaration(_)
                 | ty::TyDeclaration::TraitDeclaration(_)
-                | ty::TyDeclaration::StructDeclaration(_)
+                | ty::TyDeclaration::StructDeclaration(_, _)
                 | ty::TyDeclaration::EnumDeclaration(_, _)
                 | ty::TyDeclaration::ImplTrait(_)
                 | ty::TyDeclaration::AbiDeclaration(_)

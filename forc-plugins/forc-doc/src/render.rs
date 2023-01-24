@@ -51,7 +51,7 @@ impl RenderedDocumentation {
             match module_map.get_mut(&location) {
                 Some(doc_links) => {
                     match doc.item_body.ty_decl {
-                        StructDeclaration(_) => match doc_links.get_mut(&BlockTitle::Structs) {
+                        StructDeclaration(_, _) => match doc_links.get_mut(&BlockTitle::Structs) {
                             Some(links) => links.push(doc.link()),
                             None => {
                                 doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
@@ -101,7 +101,7 @@ impl RenderedDocumentation {
                 None => {
                     let mut doc_links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
                     match doc.item_body.ty_decl {
-                        StructDeclaration(_) => {
+                        StructDeclaration(_, _) => {
                             doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
                         }
                         EnumDeclaration(_, _) => {
@@ -155,19 +155,18 @@ impl RenderedDocumentation {
             }
             // above we check for the module a link belongs to, here we want _all_ links so the check is much more shallow
             match doc.item_body.ty_decl {
-                StructDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Structs) {
+                StructDeclaration(_, _) => match all_docs.links.get_mut(&BlockTitle::Structs) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         all_docs.links.insert(BlockTitle::Structs, vec![doc.link()]);
                     }
                 },
-                EnumDeclaration(_, _) => todo!(),
-                // EnumDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Enums) {
-                //     Some(links) => links.push(doc.link()),
-                //     None => {
-                //         all_docs.links.insert(BlockTitle::Enums, vec![doc.link()]);
-                //     }
-                // },
+                EnumDeclaration(_, _) => match all_docs.links.get_mut(&BlockTitle::Enums) {
+                    Some(links) => links.push(doc.link()),
+                    None => {
+                        all_docs.links.insert(BlockTitle::Enums, vec![doc.link()]);
+                    }
+                },
                 TraitDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Traits) {
                     Some(links) => links.push(doc.link()),
                     None => {

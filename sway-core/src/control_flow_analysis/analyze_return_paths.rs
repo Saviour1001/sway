@@ -184,7 +184,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
     match decl {
         TraitDeclaration(_)
         | AbiDeclaration(_)
-        | StructDeclaration(_)
+        | StructDeclaration(_, _)
         | EnumDeclaration(_, _)
         | StorageDeclaration(_)
         | GenericTypeForFunctionScope { .. } => Ok(leaves.to_vec()),
