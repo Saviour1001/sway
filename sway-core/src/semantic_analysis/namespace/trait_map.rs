@@ -829,7 +829,8 @@ fn are_equal_minus_dynamic_types(engines: Engines<'_>, left: TypeId, right: Type
                         acc && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
                     })
         }
-        (TypeInfo::Enum { .. }, TypeInfo::Enum { .. }) => todo!(),
+        (TypeInfo::Struct { .. }, TypeInfo::Struct { .. })
+        | (TypeInfo::Enum { .. }, TypeInfo::Enum { .. }) => todo!(),
         // (
         //     TypeInfo::Enum {
         //         name: l_name,
@@ -858,34 +859,34 @@ fn are_equal_minus_dynamic_types(engines: Engines<'_>, left: TypeId, right: Type
         //             },
         //         )
         // }
-        (
-            TypeInfo::Struct {
-                name: l_name,
-                fields: l_fields,
-                type_parameters: l_type_parameters,
-            },
-            TypeInfo::Struct {
-                name: r_name,
-                fields: r_fields,
-                type_parameters: r_type_parameters,
-            },
-        ) => {
-            l_name == r_name
-                && l_fields
-                    .iter()
-                    .zip(r_fields.iter())
-                    .fold(true, |acc, (left, right)| {
-                        acc && left.name == right.name
-                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
-                    })
-                && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
-                    true,
-                    |acc, (left, right)| {
-                        acc && left.name_ident == right.name_ident
-                            && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
-                    },
-                )
-        }
+        // (
+        //     TypeInfo::Struct {
+        //         name: l_name,
+        //         fields: l_fields,
+        //         type_parameters: l_type_parameters,
+        //     },
+        //     TypeInfo::Struct {
+        //         name: r_name,
+        //         fields: r_fields,
+        //         type_parameters: r_type_parameters,
+        //     },
+        // ) => {
+        //     l_name == r_name
+        //         && l_fields
+        //             .iter()
+        //             .zip(r_fields.iter())
+        //             .fold(true, |acc, (left, right)| {
+        //                 acc && left.name == right.name
+        //                     && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
+        //             })
+        //         && l_type_parameters.iter().zip(r_type_parameters.iter()).fold(
+        //             true,
+        //             |acc, (left, right)| {
+        //                 acc && left.name_ident == right.name_ident
+        //                     && are_equal_minus_dynamic_types(engines, left.type_id, right.type_id)
+        //             },
+        //         )
+        // }
         (TypeInfo::Tuple(l), TypeInfo::Tuple(r)) => {
             if l.len() != r.len() {
                 false

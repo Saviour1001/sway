@@ -249,54 +249,55 @@ impl Items {
                 }
             };
             match (resolved_type, projection) {
-                (
-                    TypeInfo::Struct {
-                        name: struct_name,
-                        fields,
-                        ..
-                    },
-                    ty::ProjectionKind::StructField { name: field_name },
-                ) => {
-                    let field_type_opt = {
-                        fields.iter().find_map(
-                            |ty::TyStructField {
-                                 type_id: r#type,
-                                 name,
-                                 ..
-                             }| {
-                                if name == field_name {
-                                    Some(r#type)
-                                } else {
-                                    None
-                                }
-                            },
-                        )
-                    };
-                    let field_type = match field_type_opt {
-                        Some(field_type) => field_type,
-                        None => {
-                            // gather available fields for the error message
-                            let available_fields = fields
-                                .iter()
-                                .map(|field| field.name.as_str())
-                                .collect::<Vec<_>>();
+                (TypeInfo::Struct { .. }, ty::ProjectionKind::StructField { .. }) => todo!(),
+                // (
+                //     TypeInfo::Struct {
+                //         name: struct_name,
+                //         fields,
+                //         ..
+                //     },
+                //     ty::ProjectionKind::StructField { name: field_name },
+                // ) => {
+                //     let field_type_opt = {
+                //         fields.iter().find_map(
+                //             |ty::TyStructField {
+                //                  type_id: r#type,
+                //                  name,
+                //                  ..
+                //              }| {
+                //                 if name == field_name {
+                //                     Some(r#type)
+                //                 } else {
+                //                     None
+                //                 }
+                //             },
+                //         )
+                //     };
+                //     let field_type = match field_type_opt {
+                //         Some(field_type) => field_type,
+                //         None => {
+                //             // gather available fields for the error message
+                //             let available_fields = fields
+                //                 .iter()
+                //                 .map(|field| field.name.as_str())
+                //                 .collect::<Vec<_>>();
 
-                            errors.push(CompileError::FieldNotFound {
-                                field_name: field_name.clone(),
-                                struct_name,
-                                available_fields: available_fields.join(", "),
-                                span: field_name.span(),
-                            });
-                            return err(warnings, errors);
-                        }
-                    };
-                    parent_rover = symbol;
-                    symbol = *field_type;
-                    symbol_span = field_name.span().clone();
-                    full_name_for_error.push_str(field_name.as_str());
-                    full_span_for_error =
-                        Span::join(full_span_for_error, field_name.span().clone());
-                }
+                //             errors.push(CompileError::FieldNotFound {
+                //                 field_name: field_name.clone(),
+                //                 struct_name,
+                //                 available_fields: available_fields.join(", "),
+                //                 span: field_name.span(),
+                //             });
+                //             return err(warnings, errors);
+                //         }
+                //     };
+                //     parent_rover = symbol;
+                //     symbol = *field_type;
+                //     symbol_span = field_name.span().clone();
+                //     full_name_for_error.push_str(field_name.as_str());
+                //     full_span_for_error =
+                //         Span::join(full_span_for_error, field_name.span().clone());
+                // }
                 (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, index_span }) => {
                     let field_type_opt = {
                         fields

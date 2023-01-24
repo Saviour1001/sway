@@ -169,7 +169,7 @@ impl<'a> UnifyCheck<'a> {
                     .collect::<Vec<_>>();
                 l_name == r_name && self.check_multiple(&l_types, &r_types)
             }
-            (Enum { .. }, Enum { .. }) => todo!(),
+            (Struct { .. }, Struct { .. }) | (Enum { .. }, Enum { .. }) => todo!(),
             // // Let empty enums to coerce to any other type. This is useful for Never enum.
             // (
             //     Enum {
@@ -207,30 +207,30 @@ impl<'a> UnifyCheck<'a> {
             //         .collect::<Vec<_>>();
             //     l_name == r_name && l_names == r_names && self.check_multiple(&l_types, &r_types)
             // }
-            (
-                Struct {
-                    name: l_name,
-                    fields: l_fields,
-                    type_parameters: l_type_parameters,
-                },
-                Struct {
-                    name: r_name,
-                    fields: r_fields,
-                    type_parameters: r_type_parameters,
-                },
-            ) => {
-                let l_names = l_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
-                let r_names = r_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
-                let l_types = l_type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                let r_types = r_type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                l_name == r_name && l_names == r_names && self.check_multiple(&l_types, &r_types)
-            }
+            // (
+            //     Struct {
+            //         name: l_name,
+            //         fields: l_fields,
+            //         type_parameters: l_type_parameters,
+            //     },
+            //     Struct {
+            //         name: r_name,
+            //         fields: r_fields,
+            //         type_parameters: r_type_parameters,
+            //     },
+            // ) => {
+            //     let l_names = l_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
+            //     let r_names = r_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
+            //     let l_types = l_type_parameters
+            //         .iter()
+            //         .map(|x| x.type_id)
+            //         .collect::<Vec<_>>();
+            //     let r_types = r_type_parameters
+            //         .iter()
+            //         .map(|x| x.type_id)
+            //         .collect::<Vec<_>>();
+            //     l_name == r_name && l_names == r_names && self.check_multiple(&l_types, &r_types)
+            // }
 
             // For contract callers, they can be coerced if they have the same
             // name and at least one has an address of `None`

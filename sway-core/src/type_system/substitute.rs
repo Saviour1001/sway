@@ -21,7 +21,7 @@ pub(crate) trait SubstTypes {
     }
 }
 
-pub(crate) trait FinalizeReplace {
+pub(crate) trait FinalizeTypes {
     fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList);
 
     fn finalize(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
@@ -389,7 +389,8 @@ impl TypeSubstMap {
                     type_arguments,
                 )
             }
-            (TypeInfo::Enum { .. }, TypeInfo::Enum { .. }) => todo!(),
+            (TypeInfo::Struct { .. }, TypeInfo::Struct { .. })
+            | (TypeInfo::Enum { .. }, TypeInfo::Enum { .. }) => todo!(),
             // (
             //     TypeInfo::Enum {
             //         type_parameters, ..
@@ -410,26 +411,26 @@ impl TypeSubstMap {
             //         type_arguments,
             //     )
             // }
-            (
-                TypeInfo::Struct {
-                    type_parameters, ..
-                },
-                TypeInfo::Struct {
-                    type_parameters: type_arguments,
-                    ..
-                },
-            ) => {
-                let type_parameters = type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
-                TypeSubstMap::from_superset_and_subset_helper(
-                    type_engine,
-                    type_parameters,
-                    type_arguments,
-                )
-            }
+            // (
+            //     TypeInfo::Struct {
+            //         type_parameters, ..
+            //     },
+            //     TypeInfo::Struct {
+            //         type_parameters: type_arguments,
+            //         ..
+            //     },
+            // ) => {
+            //     let type_parameters = type_parameters
+            //         .iter()
+            //         .map(|x| x.type_id)
+            //         .collect::<Vec<_>>();
+            //     let type_arguments = type_arguments.iter().map(|x| x.type_id).collect::<Vec<_>>();
+            //     TypeSubstMap::from_superset_and_subset_helper(
+            //         type_engine,
+            //         type_parameters,
+            //         type_arguments,
+            //     )
+            // }
             (TypeInfo::Tuple(type_parameters), TypeInfo::Tuple(type_arguments)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
                     type_engine,
@@ -547,46 +548,46 @@ impl TypeSubstMap {
             TypeInfo::UnknownGeneric { .. } => iter_for_match(type_engine, self, &type_info),
             TypeInfo::Placeholder(_) => iter_for_match(type_engine, self, &type_info),
             TypeInfo::TypeParam(_) => todo!(),
-            TypeInfo::Struct {
-                fields,
-                name,
-                type_parameters,
-            } => {
-                let mut need_to_create_new = false;
-                let fields = fields
-                    .into_iter()
-                    .map(|mut field| {
-                        if let Some(type_id) = self.find_match(field.type_id, engines) {
-                            need_to_create_new = true;
-                            field.type_id = type_id;
-                        }
-                        field
-                    })
-                    .collect::<Vec<_>>();
-                let type_parameters = type_parameters
-                    .into_iter()
-                    .map(|mut type_param| {
-                        if let Some(type_id) = self.find_match(type_param.type_id, engines) {
-                            need_to_create_new = true;
-                            type_param.type_id = type_id;
-                        }
-                        type_param
-                    })
-                    .collect::<Vec<_>>();
-                if need_to_create_new {
-                    Some(type_engine.insert(
-                        decl_engine,
-                        TypeInfo::Struct {
-                            fields,
-                            name,
-                            type_parameters,
-                        },
-                    ))
-                } else {
-                    None
-                }
-            }
-            TypeInfo::Enum { .. } => todo!(),
+            TypeInfo::Struct { .. } | TypeInfo::Enum { .. } => todo!(),
+            // TypeInfo::Struct {
+            //     fields,
+            //     name,
+            //     type_parameters,
+            // } => {
+            //     let mut need_to_create_new = false;
+            //     let fields = fields
+            //         .into_iter()
+            //         .map(|mut field| {
+            //             if let Some(type_id) = self.find_match(field.type_id, engines) {
+            //                 need_to_create_new = true;
+            //                 field.type_id = type_id;
+            //             }
+            //             field
+            //         })
+            //         .collect::<Vec<_>>();
+            //     let type_parameters = type_parameters
+            //         .into_iter()
+            //         .map(|mut type_param| {
+            //             if let Some(type_id) = self.find_match(type_param.type_id, engines) {
+            //                 need_to_create_new = true;
+            //                 type_param.type_id = type_id;
+            //             }
+            //             type_param
+            //         })
+            //         .collect::<Vec<_>>();
+            //     if need_to_create_new {
+            //         Some(type_engine.insert(
+            //             decl_engine,
+            //             TypeInfo::Struct {
+            //                 fields,
+            //                 name,
+            //                 type_parameters,
+            //             },
+            //         ))
+            //     } else {
+            //         None
+            //     }
+            // }
             // TypeInfo::Enum {
             //     variant_types,
             //     name,

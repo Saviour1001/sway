@@ -105,19 +105,19 @@ impl<'a> Unifier<'a> {
             (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => {
                 self.unify_arrays(received, expected, span, re.type_id, ee.type_id)
             }
-            (
-                Struct {
-                    name: rn,
-                    type_parameters: rpts,
-                    fields: rfs,
-                },
-                Struct {
-                    name: en,
-                    type_parameters: etps,
-                    fields: efs,
-                },
-            ) => self.unify_structs(received, expected, span, (rn, rpts, rfs), (en, etps, efs)),
-            (Enum { .. }, Enum { .. }) => todo!(),
+            (Struct { .. }, Struct { .. }) | (Enum { .. }, Enum { .. }) => todo!(),
+            // (
+            //     Struct {
+            //         name: rn,
+            //         type_parameters: rpts,
+            //         fields: rfs,
+            //     },
+            //     Struct {
+            //         name: en,
+            //         type_parameters: etps,
+            //         fields: efs,
+            //     },
+            // ) => self.unify_structs(received, expected, span, (rn, rpts, rfs), (en, etps, efs)),
             // // Let empty enums to coerce to any other type. This is useful for Never enum.
             // (
             //     Enum {

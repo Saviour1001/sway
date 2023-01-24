@@ -693,7 +693,7 @@ impl<'a> TypedTree<'a> {
                     );
                 }
             }
-            TypeInfo::Enum { .. } => todo!(),
+            TypeInfo::Struct { .. } | TypeInfo::Enum { .. } => todo!(),
             // TypeInfo::Enum {
             //     type_parameters,
             //     variant_types,
@@ -719,31 +719,31 @@ impl<'a> TypedTree<'a> {
             //         self.collect_ty_enum_variant(variant);
             //     }
             // }
-            TypeInfo::Struct {
-                type_parameters,
-                fields,
-                ..
-            } => {
-                if let Some(token) = self
-                    .tokens
-                    .try_get_mut(&to_ident_key(&Ident::new(type_span)))
-                    .try_unwrap()
-                {
-                    assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
-                }
+            // TypeInfo::Struct {
+            //     type_parameters,
+            //     fields,
+            //     ..
+            // } => {
+            //     if let Some(token) = self
+            //         .tokens
+            //         .try_get_mut(&to_ident_key(&Ident::new(type_span)))
+            //         .try_unwrap()
+            //     {
+            //         assign_type_to_token(token, symbol_kind, typed_token.clone(), type_id);
+            //     }
 
-                for param in type_parameters {
-                    self.collect_type_id(
-                        param.type_id,
-                        &TypedAstToken::TypedParameter(param.clone()),
-                        param.name_ident.span().clone(),
-                    );
-                }
+            //     for param in type_parameters {
+            //         self.collect_type_id(
+            //             param.type_id,
+            //             &TypedAstToken::TypedParameter(param.clone()),
+            //             param.name_ident.span().clone(),
+            //         );
+            //     }
 
-                for field in fields {
-                    self.collect_ty_struct_field(field);
-                }
-            }
+            //     for field in fields {
+            //         self.collect_ty_struct_field(field);
+            //     }
+            // }
             TypeInfo::Custom { type_arguments, .. } => {
                 if let Some(token) = self
                     .tokens

@@ -86,13 +86,15 @@ impl TyStorageDeclaration {
         });
 
         let update_available_struct_fields = |id: TypeId| match type_engine.get(id) {
-            TypeInfo::Struct { fields, .. } => fields,
+            TypeInfo::Struct { .. } => todo!(),
+            // TypeInfo::Struct { fields, .. } => fields,
             _ => vec![],
         };
 
         // if the previously iterated type was a struct, put its fields here so we know that,
         // in the case of a subfield, we can type check the that the subfield exists and its type.
-        let mut available_struct_fields = update_available_struct_fields(*initial_field_type);
+        let mut available_struct_fields: Vec<TyStructField> =
+            update_available_struct_fields(*initial_field_type);
 
         // get the initial field's type
         // make sure the next field exists in that type

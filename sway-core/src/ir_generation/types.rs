@@ -78,17 +78,18 @@ pub(super) fn get_struct_name_field_index_and_type(
         .to_typeinfo(field_type, &field_kind.span())
         .ok()?;
     match (ty_info, field_kind) {
-        (
-            TypeInfo::Struct { name, fields, .. },
-            ty::ProjectionKind::StructField { name: field_name },
-        ) => Some((
-            name.as_str().to_owned(),
-            fields
-                .iter()
-                .enumerate()
-                .find(|(_, field)| field.name == field_name)
-                .map(|(idx, field)| (idx as u64, field.type_id)),
-        )),
+        (TypeInfo::Struct { .. }, ty::ProjectionKind::StructField { .. }) => todo!(),
+        // (
+        //     TypeInfo::Struct { name, fields, .. },
+        //     ty::ProjectionKind::StructField { name: field_name },
+        // ) => Some((
+        //     name.as_str().to_owned(),
+        //     fields
+        //         .iter()
+        //         .enumerate()
+        //         .find(|(_, field)| field.name == field_name)
+        //         .map(|(idx, field)| (idx as u64, field.type_id)),
+        // )),
         _otherwise => None,
     }
 }
@@ -148,31 +149,32 @@ pub(super) fn get_indices_for_struct_access(
                 // Make sure we have an aggregate to index into.
                 // Get the field index and also its type for the next iteration.
                 match (ty_info, &field_kind) {
-                    (
-                        TypeInfo::Struct { name, fields, .. },
-                        ty::ProjectionKind::StructField { name: field_name },
-                    ) => {
-                        let field_idx_and_type_opt = fields
-                            .iter()
-                            .enumerate()
-                            .find(|(_, field)| field.name == *field_name);
-                        let (field_idx, field_type) = match field_idx_and_type_opt {
-                            Some((idx, field)) => (idx as u64, field.type_id),
-                            None => {
-                                return Err(CompileError::InternalOwned(
-                                    format!(
-                                        "Unknown field '{}' for struct {} in reassignment.",
-                                        field_kind.pretty_print(),
-                                        name,
-                                    ),
-                                    field_kind.span(),
-                                ));
-                            }
-                        };
-                        // Save the field index.
-                        fld_idcs.push(field_idx);
-                        Ok((fld_idcs, field_type))
-                    }
+                    (TypeInfo::Struct { .. }, ty::ProjectionKind::StructField { .. }) => todo!(),
+                    // (
+                    //     TypeInfo::Struct { name, fields, .. },
+                    //     ty::ProjectionKind::StructField { name: field_name },
+                    // ) => {
+                    //     let field_idx_and_type_opt = fields
+                    //         .iter()
+                    //         .enumerate()
+                    //         .find(|(_, field)| field.name == *field_name);
+                    //     let (field_idx, field_type) = match field_idx_and_type_opt {
+                    //         Some((idx, field)) => (idx as u64, field.type_id),
+                    //         None => {
+                    //             return Err(CompileError::InternalOwned(
+                    //                 format!(
+                    //                     "Unknown field '{}' for struct {} in reassignment.",
+                    //                     field_kind.pretty_print(),
+                    //                     name,
+                    //                 ),
+                    //                 field_kind.span(),
+                    //             ));
+                    //         }
+                    //     };
+                    //     // Save the field index.
+                    //     fld_idcs.push(field_idx);
+                    //     Ok((fld_idcs, field_type))
+                    // }
                     (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, .. }) => {
                         let field_type = match fields.get(*index) {
                             Some(field_type_argument) => field_type_argument.type_id,

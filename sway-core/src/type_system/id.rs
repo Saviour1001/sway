@@ -81,7 +81,7 @@ impl ReplaceSelfType for TypeId {
             TypeInfo::SelfType => {
                 *self = self_type;
             }
-            TypeInfo::Enum { .. } => todo!(),
+            TypeInfo::Struct { .. } | TypeInfo::Enum { .. } => todo!(),
             // TypeInfo::Enum {
             //     mut type_parameters,
             //     mut variant_types,
@@ -94,18 +94,18 @@ impl ReplaceSelfType for TypeId {
             //         variant_type.replace_self_type(engines, self_type);
             //     }
             // }
-            TypeInfo::Struct {
-                mut type_parameters,
-                mut fields,
-                ..
-            } => {
-                for type_parameter in type_parameters.iter_mut() {
-                    type_parameter.replace_self_type(engines, self_type);
-                }
-                for field in fields.iter_mut() {
-                    field.replace_self_type(engines, self_type);
-                }
-            }
+            // TypeInfo::Struct {
+            //     mut type_parameters,
+            //     mut fields,
+            //     ..
+            // } => {
+            //     for type_parameter in type_parameters.iter_mut() {
+            //         type_parameter.replace_self_type(engines, self_type);
+            //     }
+            //     for field in fields.iter_mut() {
+            //         field.replace_self_type(engines, self_type);
+            //     }
+            // }
             TypeInfo::Tuple(mut type_arguments) => {
                 for type_argument in type_arguments.iter_mut() {
                     type_argument.replace_self_type(engines, self_type);
@@ -152,7 +152,7 @@ impl SubstTypes for TypeId {
     }
 }
 
-impl FinalizeReplace for TypeId {
+impl FinalizeTypes for TypeId {
     fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         if let Some(matching_id) = subst_list.find_match(engines, *self) {
             *self = matching_id;
@@ -236,7 +236,7 @@ impl TypeId {
         resolved_type_id: TypeId,
     ) -> Option<Vec<program_abi::TypeApplication>> {
         match type_engine.get(*self) {
-            TypeInfo::Enum { .. } => todo!(),
+            TypeInfo::Struct { .. } | TypeInfo::Enum { .. } => todo!(),
             // TypeInfo::Enum { variant_types, .. } => {
             //     // A list of all `program_abi::TypeDeclaration`s needed for the enum variants
             //     let variants = variant_types
@@ -275,44 +275,44 @@ impl TypeId {
             //             .collect(),
             //     )
             // }
-            TypeInfo::Struct { fields, .. } => {
-                // A list of all `program_abi::TypeDeclaration`s needed for the struct fields
-                let field_types = fields
-                    .iter()
-                    .map(|x| program_abi::TypeDeclaration {
-                        type_id: x.initial_type_id.index(),
-                        type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
-                        components: x.initial_type_id.get_json_type_components(
-                            type_engine,
-                            types,
-                            x.type_id,
-                        ),
-                        type_parameters: x.initial_type_id.get_json_type_parameters(
-                            type_engine,
-                            types,
-                            x.type_id,
-                        ),
-                    })
-                    .collect::<Vec<_>>();
-                types.extend(field_types);
+            // TypeInfo::Struct { fields, .. } => {
+            //     // A list of all `program_abi::TypeDeclaration`s needed for the struct fields
+            //     let field_types = fields
+            //         .iter()
+            //         .map(|x| program_abi::TypeDeclaration {
+            //             type_id: x.initial_type_id.index(),
+            //             type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
+            //             components: x.initial_type_id.get_json_type_components(
+            //                 type_engine,
+            //                 types,
+            //                 x.type_id,
+            //             ),
+            //             type_parameters: x.initial_type_id.get_json_type_parameters(
+            //                 type_engine,
+            //                 types,
+            //                 x.type_id,
+            //             ),
+            //         })
+            //         .collect::<Vec<_>>();
+            //     types.extend(field_types);
 
-                // Generate the JSON data for the struct. This is basically a list of
-                // `program_abi::TypeApplication`s
-                Some(
-                    fields
-                        .iter()
-                        .map(|x| program_abi::TypeApplication {
-                            name: x.name.to_string(),
-                            type_id: x.initial_type_id.index(),
-                            type_arguments: x.initial_type_id.get_json_type_arguments(
-                                type_engine,
-                                types,
-                                x.type_id,
-                            ),
-                        })
-                        .collect(),
-                )
-            }
+            //     // Generate the JSON data for the struct. This is basically a list of
+            //     // `program_abi::TypeApplication`s
+            //     Some(
+            //         fields
+            //             .iter()
+            //             .map(|x| program_abi::TypeApplication {
+            //                 name: x.name.to_string(),
+            //                 type_id: x.initial_type_id.index(),
+            //                 type_arguments: x.initial_type_id.get_json_type_arguments(
+            //                     type_engine,
+            //                     types,
+            //                     x.type_id,
+            //                 ),
+            //             })
+            //             .collect(),
+            //     )
+            // }
             TypeInfo::Array(..) => {
                 if let TypeInfo::Array(elem_ty, _) = type_engine.get(resolved_type_id) {
                     // The `program_abi::TypeDeclaration`s needed for the array element type

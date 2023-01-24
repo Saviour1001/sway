@@ -515,13 +515,14 @@ fn effects_of_expression(engines: Engines<'_>, expr: &ty::TyExpression) -> HashS
         // this type of assignment only mutates local variables and not storage
         Reassignment(reassgn) => effects_of_expression(engines, &reassgn.rhs),
         StorageAccess(_) => match type_engine.get(expr.return_type) {
+            crate::TypeInfo::Struct { .. } | crate::TypeInfo::Enum { .. } => todo!(),
+
             // accessing a storage map's method (or a storage vector's method),
             // which is represented using a struct with empty fields
             // does not result in a storage read
-            crate::TypeInfo::Struct { fields, .. } if fields.is_empty() => HashSet::new(),
+            // crate::TypeInfo::Struct { fields, .. } if fields.is_empty() => HashSet::new(),
             // if it's an empty enum then it cannot be constructed and hence cannot be read
             // adding this check here just to be on the safe side
-            crate::TypeInfo::Enum { .. } => todo!(),
             // crate::TypeInfo::Enum { variant_types, .. } if variant_types.is_empty() => {
             //     HashSet::new()
             // }

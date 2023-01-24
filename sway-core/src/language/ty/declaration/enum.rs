@@ -45,7 +45,7 @@ impl SubstTypes for TyEnumDeclaration {
     }
 }
 
-impl FinalizeReplace for TyEnumDeclaration {
+impl FinalizeTypes for TyEnumDeclaration {
     fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         self.variants
             .iter_mut()
@@ -144,7 +144,7 @@ impl SubstTypes for TyEnumVariant {
     }
 }
 
-impl FinalizeReplace for TyEnumVariant {
+impl FinalizeTypes for TyEnumVariant {
     fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         self.type_id.finalize(engines, subst_list);
     }

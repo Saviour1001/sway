@@ -102,10 +102,11 @@ pub enum TypeInfo {
         decl_id: DeclId,
         subst_list: TypeSubstList,
     },
+    // https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/sty/enum.TyKind.html#variant.Adt
     Struct {
         name: Ident,
-        type_parameters: Vec<TypeParameter>,
-        fields: Vec<ty::TyStructField>,
+        decl_id: DeclId,
+        subst_list: TypeSubstList,
     },
     Boolean,
     Tuple(Vec<TypeArgument>),
@@ -179,23 +180,23 @@ impl HashWithEngines for TypeInfo {
             }
             TypeInfo::Enum {
                 name,
-                decl_id: def_id,
+                decl_id,
                 subst_list,
             } => {
                 state.write_u8(7);
                 name.hash(state);
-                def_id.hash(state);
+                decl_id.hash(state);
                 subst_list.hash(state, type_engine);
             }
             TypeInfo::Struct {
                 name,
-                fields,
-                type_parameters,
+                decl_id,
+                subst_list,
             } => {
-                state.write_u8(8);
+                state.write_u8(7);
                 name.hash(state);
-                fields.hash(state, type_engine);
-                type_parameters.hash(state, type_engine);
+                decl_id.hash(state);
+                subst_list.hash(state, type_engine);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
                 state.write_u8(9);
@@ -306,34 +307,34 @@ impl PartialEqWithEngines for TypeInfo {
             (
                 Self::Enum {
                     name: l_name,
-                    decl_id: l_def_id,
+                    decl_id: l_decl_id,
                     subst_list: l_subst_list,
                 },
                 Self::Enum {
                     name: r_name,
-                    decl_id: r_def_id,
+                    decl_id: r_decl_id,
                     subst_list: r_subst_list,
                 },
             ) => {
                 l_name == r_name
-                    && l_def_id == r_def_id
+                    && l_decl_id == r_decl_id
                     && l_subst_list.eq(r_subst_list, type_engine)
             }
             (
                 Self::Struct {
                     name: l_name,
-                    fields: l_fields,
-                    type_parameters: l_type_parameters,
+                    decl_id: l_decl_id,
+                    subst_list: l_subst_list,
                 },
                 Self::Struct {
                     name: r_name,
-                    fields: r_fields,
-                    type_parameters: r_type_parameters,
+                    decl_id: r_decl_id,
+                    subst_list: r_subst_list,
                 },
             ) => {
                 l_name == r_name
-                    && l_fields.eq(r_fields, type_engine)
-                    && l_type_parameters.eq(r_type_parameters, type_engine)
+                    && l_decl_id == r_decl_id
+                    && l_subst_list.eq(r_subst_list, type_engine)
             }
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()
@@ -412,11 +413,11 @@ impl DisplayWithEngines for TypeInfo {
             ErrorRecovery => "unknown due to error".into(),
             Enum {
                 name,
-                decl_id: def_id,
+                decl_id,
                 subst_list,
             } => {
                 let mut decl = decl_engine
-                    .get_enum(def_id.clone(), &name.span())
+                    .get_enum(decl_id.clone(), &name.span())
                     .expect("unknown enum");
                 decl.finalize(engines, subst_list);
                 let type_parameters = decl.type_parameters;
@@ -428,13 +429,20 @@ impl DisplayWithEngines for TypeInfo {
             }
             Struct {
                 name,
-                type_parameters,
-                ..
-            } => print_inner_types(
-                engines,
-                name.as_str().to_string(),
-                type_parameters.iter().map(|x| x.type_id),
-            ),
+                decl_id,
+                subst_list,
+            } => {
+                let mut decl = decl_engine
+                    .get_struct(decl_id.clone(), &name.span())
+                    .expect("unknown struct");
+                decl.finalize(engines, subst_list);
+                let type_parameters = decl.type_parameters;
+                print_inner_types(
+                    engines,
+                    name.as_str().to_string(),
+                    type_parameters.iter().map(|x| x.type_id),
+                )
+            }
             ContractCaller { abi_name, address } => {
                 format!(
                     "contract caller {} ( {} )",
@@ -483,15 +491,13 @@ impl UnconstrainedTypeParameters for TypeInfo {
             }
             TypeInfo::Enum {
                 name,
-                decl_id: def_id,
+                decl_id,
                 subst_list,
             } => {
                 let mut decl = decl_engine
-                    .get_enum(def_id.clone(), &name.span())
+                    .get_enum(decl_id.clone(), &name.span())
                     .expect("unknown enum");
-                decl.finalize(engines, subst_list);
-                let unconstrained_in_type_parameters = decl
-                    .type_parameters
+                let unconstrained_in_subst_list = subst_list
                     .iter()
                     .map(|type_param| {
                         type_param
@@ -508,14 +514,17 @@ impl UnconstrainedTypeParameters for TypeInfo {
                             .type_parameter_is_unconstrained(engines, type_parameter)
                     })
                     .any(|x| x);
-                unconstrained_in_type_parameters || unconstrained_in_variants
+                unconstrained_in_subst_list || unconstrained_in_variants
             }
             TypeInfo::Struct {
-                type_parameters,
-                fields,
-                ..
+                name,
+                decl_id,
+                subst_list,
             } => {
-                let unconstrained_in_type_parameters = type_parameters
+                let mut decl = decl_engine
+                    .get_struct(decl_id.clone(), &name.span())
+                    .expect("unknown struct");
+                let unconstrained_in_subst_list = subst_list
                     .iter()
                     .map(|type_param| {
                         type_param
@@ -523,7 +532,8 @@ impl UnconstrainedTypeParameters for TypeInfo {
                             .type_parameter_is_unconstrained(engines, type_parameter)
                     })
                     .any(|x| x);
-                let unconstrained_in_fields = fields
+                let unconstrained_in_fields = decl
+                    .fields
                     .iter()
                     .map(|field| {
                         field
@@ -531,7 +541,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                             .type_parameter_is_unconstrained(engines, type_parameter)
                     })
                     .any(|x| x);
-                unconstrained_in_type_parameters || unconstrained_in_fields
+                unconstrained_in_subst_list || unconstrained_in_fields
             }
             TypeInfo::Tuple(elems) => elems
                 .iter()
@@ -668,15 +678,20 @@ impl TypeInfo {
             }
             B256 => "b256".into(),
             Struct {
-                fields,
-                type_parameters,
-                ..
+                name,
+                decl_id,
+                subst_list,
             } => {
+                let mut decl = decl_engine
+                    .get_struct(decl_id.clone(), &name.span())
+                    .expect("unknown struct");
+                decl.finalize(engines, subst_list);
                 let field_names = {
-                    let names = fields
+                    let names = decl
+                        .fields
                         .iter()
-                        .map(|ty| {
-                            let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
+                        .map(|field| {
+                            let ty = match type_engine.to_typeinfo(field.type_id, error_msg_span) {
                                 Err(e) => return err(vec![], vec![e.into()]),
                                 Ok(ty) => ty,
                             };
@@ -694,7 +709,8 @@ impl TypeInfo {
                 };
 
                 let type_arguments = {
-                    let type_arguments = type_parameters
+                    let type_arguments = decl
+                        .type_parameters
                         .iter()
                         .map(|ty| {
                             let ty = match type_engine.to_typeinfo(ty.type_id, error_msg_span) {
@@ -713,7 +729,6 @@ impl TypeInfo {
                     }
                     buf
                 };
-
                 if type_arguments.is_empty() {
                     format!("s({})", field_names.join(","))
                 } else {
@@ -722,11 +737,11 @@ impl TypeInfo {
             }
             Enum {
                 name,
-                decl_id: def_id,
+                decl_id,
                 subst_list,
             } => {
                 let mut decl = decl_engine
-                    .get_enum(def_id.clone(), &name.span())
+                    .get_enum(decl_id.clone(), &name.span())
                     .expect("unknown enum");
                 decl.finalize(engines, subst_list);
                 let variant_names = {
@@ -815,19 +830,35 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum {
                 name,
-                decl_id: def_id,
+                decl_id,
                 subst_list,
             } => {
                 let mut decl = decl_engine
-                    .get_enum(def_id.clone(), &name.span())
+                    .get_enum(decl_id.clone(), &name.span())
                     .expect("unknown enum");
-                decl.finalize(engines, subst_list);
-                decl.variants
+                subst_list
                     .iter()
-                    .all(|variant_type| id_uninhabited(variant_type.type_id))
+                    .all(|type_param| id_uninhabited(type_param.type_id))
+                    && decl
+                        .variants
+                        .iter()
+                        .all(|variant_type| id_uninhabited(variant_type.type_id))
             }
-            TypeInfo::Struct { fields, .. } => {
-                fields.iter().any(|field| id_uninhabited(field.type_id))
+            TypeInfo::Struct {
+                name,
+                decl_id,
+                subst_list,
+            } => {
+                let mut decl = decl_engine
+                    .get_struct(decl_id.clone(), &name.span())
+                    .expect("unknown struct");
+                subst_list
+                    .iter()
+                    .all(|type_param| id_uninhabited(type_param.type_id))
+                    && decl
+                        .fields
+                        .iter()
+                        .all(|field| id_uninhabited(field.type_id))
             }
             TypeInfo::Tuple(fields) => fields
                 .iter()
@@ -843,11 +874,11 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum {
                 name,
-                decl_id: def_id,
+                decl_id,
                 subst_list,
             } => {
                 let mut decl = decl_engine
-                    .get_enum(def_id.clone(), &name.span())
+                    .get_enum(decl_id.clone(), &name.span())
                     .expect("unknown enum");
                 decl.finalize(engines, subst_list);
                 let mut found_unit_variant = false;
@@ -864,9 +895,17 @@ impl TypeInfo {
                 }
                 true
             }
-            TypeInfo::Struct { fields, .. } => {
+            TypeInfo::Struct {
+                name,
+                decl_id,
+                subst_list,
+            } => {
+                let mut decl = decl_engine
+                    .get_struct(decl_id.clone(), &name.span())
+                    .expect("unknown struct");
+                decl.finalize(engines, subst_list);
                 let mut all_zero_sized = true;
-                for field in fields {
+                for field in decl.fields {
                     let type_info = type_engine.get(field.type_id);
                     if type_info.is_uninhabited(engines) {
                         return true;
@@ -998,15 +1037,14 @@ impl TypeInfo {
             match type_engine.get(type_id) {
                 TypeInfo::Enum {
                     name,
-                    decl_id: def_id,
+                    decl_id,
                     subst_list,
                 } => {
                     inner_types.insert(type_id);
                     let mut decl = decl_engine
-                        .get_enum(def_id.clone(), &name.span())
+                        .get_enum(decl_id.clone(), &name.span())
                         .expect("unknown enum");
-                    decl.finalize(engines, &subst_list);
-                    for type_param in decl.type_parameters.iter() {
+                    for type_param in subst_list.iter() {
                         inner_types.extend(
                             type_engine
                                 .get(type_param.type_id)
@@ -1022,19 +1060,22 @@ impl TypeInfo {
                     }
                 }
                 TypeInfo::Struct {
-                    type_parameters,
-                    fields,
-                    ..
+                    name,
+                    decl_id,
+                    subst_list,
                 } => {
                     inner_types.insert(type_id);
-                    for type_param in type_parameters.iter() {
+                    let mut decl = decl_engine
+                        .get_struct(decl_id.clone(), &name.span())
+                        .expect("unknown struct");
+                    for type_param in subst_list.iter() {
                         inner_types.extend(
                             type_engine
                                 .get(type_param.type_id)
                                 .extract_inner_types(engines),
                         );
                     }
-                    for field in fields.iter() {
+                    for field in decl.fields.iter() {
                         inner_types
                             .extend(type_engine.get(field.type_id).extract_inner_types(engines));
                     }
@@ -1081,11 +1122,10 @@ impl TypeInfo {
                 | TypeInfo::RawUntypedPtr
                 | TypeInfo::RawUntypedSlice
                 | TypeInfo::Contract
-                | TypeInfo::Placeholder(_)
-                | TypeInfo::TypeParam(_) => {
+                | TypeInfo::Placeholder(_) => {
                     inner_types.insert(type_id);
                 }
-                TypeInfo::ErrorRecovery => {}
+                TypeInfo::TypeParam(_) | TypeInfo::ErrorRecovery => {}
             }
             inner_types
         };
@@ -1094,14 +1134,13 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum {
                 name,
-                decl_id: def_id,
+                decl_id,
                 subst_list,
             } => {
                 let mut decl = decl_engine
-                    .get_enum(def_id.clone(), &name.span())
+                    .get_enum(decl_id.clone(), &name.span())
                     .expect("unknown enum");
-                decl.finalize(engines, &subst_list);
-                for type_param in decl.type_parameters.iter() {
+                for type_param in subst_list.iter() {
                     inner_types.extend(helper(type_param.type_id));
                 }
                 for variant in decl.variants.iter() {
@@ -1109,14 +1148,17 @@ impl TypeInfo {
                 }
             }
             TypeInfo::Struct {
-                type_parameters,
-                fields,
-                ..
+                name,
+                decl_id,
+                subst_list,
             } => {
-                for type_param in type_parameters.iter() {
+                let mut decl = decl_engine
+                    .get_struct(decl_id.clone(), &name.span())
+                    .expect("unknown struct");
+                for type_param in subst_list.iter() {
                     inner_types.extend(helper(type_param.type_id));
                 }
-                for field in fields.iter() {
+                for field in decl.fields.iter() {
                     inner_types.extend(helper(field.type_id));
                 }
             }
@@ -1258,62 +1300,60 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum {
                 name,
-                decl_id: def_id,
+                decl_id,
                 subst_list,
             } => {
                 let mut decl = decl_engine
-                    .get_enum(def_id.clone(), &name.span())
+                    .get_enum(decl_id.clone(), &name.span())
                     .expect("unknown enum");
-                decl.finalize(engines, &subst_list);
-                for type_parameter in decl.type_parameters.iter() {
-                    let mut nested_types = check!(
+                for type_param in subst_list.iter() {
+                    all_nested_types.extend(check!(
                         type_engine
-                            .get(type_parameter.type_id)
+                            .get(type_param.type_id)
                             .extract_nested_types(engines, span),
                         return err(warnings, errors),
                         warnings,
                         errors
-                    );
-                    all_nested_types.append(&mut nested_types);
+                    ));
                 }
                 for variant_type in decl.variants.iter() {
-                    let mut nested_types = check!(
+                    all_nested_types.extend(check!(
                         type_engine
                             .get(variant_type.type_id)
                             .extract_nested_types(engines, span),
                         return err(warnings, errors),
                         warnings,
                         errors
-                    );
-                    all_nested_types.append(&mut nested_types);
+                    ));
                 }
             }
             TypeInfo::Struct {
-                fields,
-                type_parameters,
-                ..
+                name,
+                decl_id,
+                subst_list,
             } => {
-                for type_parameter in type_parameters.iter() {
-                    let mut nested_types = check!(
+                let mut decl = decl_engine
+                    .get_struct(decl_id.clone(), &name.span())
+                    .expect("unknown struct");
+                for type_param in subst_list.iter() {
+                    all_nested_types.extend(check!(
                         type_engine
-                            .get(type_parameter.type_id)
+                            .get(type_param.type_id)
                             .extract_nested_types(engines, span),
                         return err(warnings, errors),
                         warnings,
                         errors
-                    );
-                    all_nested_types.append(&mut nested_types);
+                    ));
                 }
-                for field in fields.iter() {
-                    let mut nested_types = check!(
+                for field in decl.fields.iter() {
+                    all_nested_types.extend(check!(
                         type_engine
                             .get(field.type_id)
                             .extract_nested_types(engines, span),
                         return err(warnings, errors),
                         warnings,
                         errors
-                    );
-                    all_nested_types.append(&mut nested_types);
+                    ));
                 }
             }
             TypeInfo::Tuple(type_arguments) => {
@@ -1565,12 +1605,12 @@ impl TypeInfo {
             (
                 Self::Enum {
                     name: l_name,
-                    decl_id: l_def_id,
+                    decl_id: l_decl_id,
                     subst_list: l_subst_list,
                 },
                 Self::Enum {
                     name: r_name,
-                    decl_id: r_def_id,
+                    decl_id: r_decl_id,
                     subst_list: r_subst_list,
                 },
             ) => {
@@ -1583,33 +1623,31 @@ impl TypeInfo {
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 l_name == r_name
-                    && l_def_id == r_def_id
+                    && l_decl_id == r_decl_id
                     && types_are_subset_of(type_engine, &l_types, &r_types)
             }
             (
                 Self::Struct {
                     name: l_name,
-                    fields: l_fields,
-                    type_parameters: l_type_parameters,
+                    decl_id: l_decl_id,
+                    subst_list: l_subst_list,
                 },
                 Self::Struct {
                     name: r_name,
-                    fields: r_fields,
-                    type_parameters: r_type_parameters,
+                    decl_id: r_decl_id,
+                    subst_list: r_subst_list,
                 },
             ) => {
-                let l_names = l_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
-                let r_names = r_fields.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
-                let l_types = l_type_parameters
+                let l_types = l_subst_list
                     .iter()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
-                let r_types = r_type_parameters
+                let r_types = r_subst_list
                     .iter()
                     .map(|x| type_engine.get(x.type_id))
                     .collect::<Vec<_>>();
                 l_name == r_name
-                    && l_names == r_names
+                    && l_decl_id == r_decl_id
                     && types_are_subset_of(type_engine, &l_types, &r_types)
             }
             (Self::Tuple(l_types), Self::Tuple(r_types)) => {
@@ -1647,18 +1685,33 @@ impl TypeInfo {
         let mut warnings = vec![];
         let mut errors = vec![];
         let type_engine = engines.te();
+        let decl_engine = engines.de();
         match (self, subfields.split_first()) {
             (TypeInfo::Struct { .. }, None) => err(warnings, errors),
-            (TypeInfo::Struct { name, fields, .. }, Some((first, rest))) => {
-                let field = match fields
+            (
+                TypeInfo::Struct {
+                    name,
+                    decl_id,
+                    subst_list,
+                },
+                Some((first, rest)),
+            ) => {
+                let decl = decl_engine
+                    .get_struct(decl_id.clone(), &name.span())
+                    .expect("unknown struct");
+                let mut field = match decl
+                    .fields
                     .iter()
                     .find(|field| field.name.as_str() == first.as_str())
                 {
                     Some(field) => field.clone(),
                     None => {
                         // gather available fields for the error message
-                        let available_fields =
-                            fields.iter().map(|x| x.name.as_str()).collect::<Vec<_>>();
+                        let available_fields = decl
+                            .fields
+                            .iter()
+                            .map(|x| x.name.as_str())
+                            .collect::<Vec<_>>();
                         errors.push(CompileError::FieldNotFound {
                             field_name: first.clone(),
                             struct_name: name.clone(),
@@ -1668,6 +1721,7 @@ impl TypeInfo {
                         return err(warnings, errors);
                     }
                 };
+                field.finalize(engines, subst_list);
                 let field = if rest.is_empty() {
                     field
                 } else {
@@ -1701,19 +1755,18 @@ impl TypeInfo {
         // TODO: there might be an optimization here that if the type params hold
         // only non-dynamic types, then it doesn't matter that there are type params
         match self {
-            TypeInfo::Enum {
-                name,
-                decl_id: def_id,
-                ..
-            } => {
+            TypeInfo::Enum { name, decl_id, .. } => {
                 let decl = decl_engine
-                    .get_enum(def_id.clone(), &name.span())
+                    .get_enum(decl_id.clone(), &name.span())
                     .expect("unknown enum");
                 !decl.type_parameters.is_empty()
             }
-            TypeInfo::Struct {
-                type_parameters, ..
-            } => !type_parameters.is_empty(),
+            TypeInfo::Struct { name, decl_id, .. } => {
+                let decl = decl_engine
+                    .get_struct(decl_id.clone(), &name.span())
+                    .expect("unknown struct");
+                !decl.type_parameters.is_empty()
+            }
             TypeInfo::Str(_)
             | TypeInfo::UnsignedInteger(_)
             | TypeInfo::Boolean
@@ -1741,13 +1794,9 @@ impl TypeInfo {
         let decl_engine = engines.de();
         match self {
             TypeInfo::Unknown => false,
-            TypeInfo::Enum {
-                name,
-                decl_id: def_id,
-                ..
-            } => {
+            TypeInfo::Enum { name, decl_id, .. } => {
                 let decl = decl_engine
-                    .get_enum(def_id.clone(), &name.span())
+                    .get_enum(decl_id.clone(), &name.span())
                     .expect("unknown enum");
                 !decl.variants.is_empty()
             }
@@ -1820,7 +1869,7 @@ impl TypeInfo {
         let warnings = vec![];
         let errors = vec![];
         match self {
-            TypeInfo::Struct { name, fields, .. } => ok((name, fields), warnings, errors),
+            TypeInfo::Struct { .. } => todo!(),
             TypeInfo::ErrorRecovery => err(warnings, errors),
             a => err(
                 vec![],

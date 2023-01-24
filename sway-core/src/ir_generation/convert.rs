@@ -97,16 +97,16 @@ fn convert_resolved_type(
         TypeInfo::Boolean => Type::get_bool(context),
         TypeInfo::B256 => Type::get_b256(context),
         TypeInfo::Str(n) => Type::new_string(context, n.val() as u64),
-        TypeInfo::Struct { fields, .. } => super::types::get_aggregate_for_types(
-            type_engine,
-            context,
-            fields
-                .iter()
-                .map(|field| field.type_id)
-                .collect::<Vec<_>>()
-                .as_slice(),
-        )?,
-        TypeInfo::Enum { .. } => todo!(),
+        TypeInfo::Struct { .. } | TypeInfo::Enum { .. } => todo!(),
+        // TypeInfo::Struct { fields, .. } => super::types::get_aggregate_for_types(
+        //     type_engine,
+        //     context,
+        //     fields
+        //         .iter()
+        //         .map(|field| field.type_id)
+        //         .collect::<Vec<_>>()
+        //         .as_slice(),
+        // )?,
         // TypeInfo::Enum { variant_types, .. } => {
         //     create_enum_aggregate(type_engine, context, variant_types)?
         // }

@@ -57,7 +57,7 @@ impl SubstTypes for TypeParameter {
     }
 }
 
-impl FinalizeReplace for TypeParameter {
+impl FinalizeTypes for TypeParameter {
     fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         self.type_id.finalize(engines, subst_list);
         self.trait_constraints

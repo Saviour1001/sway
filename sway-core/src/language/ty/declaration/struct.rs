@@ -56,21 +56,6 @@ impl ReplaceSelfType for TyStructDeclaration {
     }
 }
 
-impl CreateTypeId for TyStructDeclaration {
-    fn create_type_id(&self, engines: Engines<'_>, subst_list: TypeSubstList) -> TypeId {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
-        type_engine.insert(
-            decl_engine,
-            TypeInfo::Struct {
-                name: self.name.clone(),
-                fields: self.fields.clone(),
-                type_parameters: self.type_parameters.clone(),
-            },
-        )
-    }
-}
-
 impl Spanned for TyStructDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
@@ -84,6 +69,17 @@ impl MonomorphizeHelper for TyStructDeclaration {
 
     fn name(&self) -> &Ident {
         &self.name
+    }
+}
+
+impl FinalizeTypes for TyStructDeclaration {
+    fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.fields
+            .iter_mut()
+            .for_each(|x| x.finalize(engines, subst_list));
+        self.type_parameters
+            .iter_mut()
+            .for_each(|x| x.finalize(engines, subst_list));
     }
 }
 
@@ -151,5 +147,11 @@ impl SubstTypes for TyStructField {
 impl ReplaceSelfType for TyStructField {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
         self.type_id.replace_self_type(engines, self_type);
+    }
+}
+
+impl FinalizeTypes for TyStructField {
+    fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
+        self.type_id.finalize(engines, subst_list);
     }
 }

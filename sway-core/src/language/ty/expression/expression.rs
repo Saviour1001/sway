@@ -139,24 +139,25 @@ impl CollectTypesMetadata for TyExpression {
                     }
                 }
             }
-            StructExpression { fields, span, .. } => {
-                if let TypeInfo::Struct {
-                    type_parameters, ..
-                } = ctx.type_engine.get(self.return_type)
-                {
-                    for type_parameter in type_parameters {
-                        ctx.call_site_insert(type_parameter.type_id, span.clone());
-                    }
-                }
-                for field in fields.iter() {
-                    res.append(&mut check!(
-                        field.value.collect_types_metadata(ctx),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    ));
-                }
-            }
+            StructExpression { .. } => todo!(),
+            // StructExpression { fields, span, .. } => {
+            //     if let TypeInfo::Struct {
+            //         type_parameters, ..
+            //     } = ctx.type_engine.get(self.return_type)
+            //     {
+            //         for type_parameter in type_parameters {
+            //             ctx.call_site_insert(type_parameter.type_id, span.clone());
+            //         }
+            //     }
+            //     for field in fields.iter() {
+            //         res.append(&mut check!(
+            //             field.value.collect_types_metadata(ctx),
+            //             return err(warnings, errors),
+            //             warnings,
+            //             errors
+            //         ));
+            //     }
+            // }
             LazyOperator { lhs, rhs, .. } => {
                 res.append(&mut check!(
                     lhs.collect_types_metadata(ctx),

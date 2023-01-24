@@ -649,12 +649,12 @@ impl Dependencies {
             TypeInfo::Array(elem_type, _) => {
                 self.gather_from_typeinfo(type_engine, &type_engine.get(elem_type.type_id))
             }
-            TypeInfo::Struct { fields, .. } => {
-                self.gather_from_iter(fields.iter(), |deps, field| {
-                    deps.gather_from_typeinfo(type_engine, &type_engine.get(field.type_id))
-                })
-            }
-            TypeInfo::Enum { .. } => todo!(),
+            TypeInfo::Struct { .. } | TypeInfo::Enum { .. } => todo!(),
+            // TypeInfo::Struct { fields, .. } => {
+            //     self.gather_from_iter(fields.iter(), |deps, field| {
+            //         deps.gather_from_typeinfo(type_engine, &type_engine.get(field.type_id))
+            //     })
+            // }
             // TypeInfo::Enum { variant_types, .. } => {
             //     self.gather_from_iter(variant_types.iter(), |deps, variant| {
             //         deps.gather_from_typeinfo(type_engine, &type_engine.get(variant.type_id))
