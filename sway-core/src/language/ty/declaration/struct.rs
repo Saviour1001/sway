@@ -15,15 +15,12 @@ pub struct TyStructDeclaration {
     pub attributes: transform::AttributesMap,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyStructDeclaration {}
 impl PartialEqWithEngines for TyStructDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.fields.eq(&other.fields, engines)
-            && self.type_parameters.eq(&other.type_parameters, engines)
+            && self.fields.eq(&other.fields, type_engine)
+            && self.type_parameters.eq(&other.type_parameters, type_engine)
             && self.visibility == other.visibility
     }
 }
@@ -128,9 +125,6 @@ pub struct TyStructField {
     pub attributes: transform::AttributesMap,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TyStructField {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
@@ -138,17 +132,13 @@ impl HashWithEngines for TyStructField {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyStructField {}
 impl PartialEqWithEngines for TyStructField {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && type_engine
                 .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
+                .eq(&type_engine.get(other.type_id), type_engine)
     }
 }
 

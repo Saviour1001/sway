@@ -15,25 +15,18 @@ impl Spanned for TypeArgument {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TypeArgument {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         type_engine.get(self.type_id).hash(state, type_engine);
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TypeArgument {}
 impl PartialEqWithEngines for TypeArgument {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         type_engine
             .get(self.type_id)
-            .eq(&type_engine.get(other.type_id), engines)
+            .eq(&type_engine.get(other.type_id), type_engine)
     }
 }
 impl OrdWithEngines for TypeArgument {

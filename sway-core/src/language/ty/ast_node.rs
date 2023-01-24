@@ -20,13 +20,10 @@ pub struct TyAstNode {
     pub(crate) span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyAstNode {}
 impl PartialEqWithEngines for TyAstNode {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.content.eq(&other.content, engines)
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        self.content.eq(&other.content, type_engine)
     }
 }
 
@@ -233,12 +230,12 @@ pub enum TyAstNodeContent {
 
 impl EqWithEngines for TyAstNodeContent {}
 impl PartialEqWithEngines for TyAstNodeContent {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         match (self, other) {
-            (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, engines),
-            (Self::Expression(x), Self::Expression(y)) => x.eq(y, engines),
+            (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, type_engine),
+            (Self::Expression(x), Self::Expression(y)) => x.eq(y, type_engine),
             (Self::ImplicitReturnExpression(x), Self::ImplicitReturnExpression(y)) => {
-                x.eq(y, engines)
+                x.eq(y, type_engine)
             }
             (Self::SideEffect, Self::SideEffect) => true,
             _ => false,

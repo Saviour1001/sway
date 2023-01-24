@@ -30,22 +30,19 @@ impl Default for DeclWrapper {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl PartialEqWithEngines for DeclWrapper {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         match (self, other) {
             (DeclWrapper::Unknown, DeclWrapper::Unknown) => true,
-            (DeclWrapper::Function(l), DeclWrapper::Function(r)) => l.eq(r, engines),
-            (DeclWrapper::Trait(l), DeclWrapper::Trait(r)) => l.eq(r, engines),
-            (DeclWrapper::TraitFn(l), DeclWrapper::TraitFn(r)) => l.eq(r, engines),
-            (DeclWrapper::ImplTrait(l), DeclWrapper::ImplTrait(r)) => l.eq(r, engines),
-            (DeclWrapper::Struct(l), DeclWrapper::Struct(r)) => l.eq(r, engines),
-            (DeclWrapper::Storage(l), DeclWrapper::Storage(r)) => l.eq(r, engines),
-            (DeclWrapper::Abi(l), DeclWrapper::Abi(r)) => l.eq(r, engines),
-            (DeclWrapper::Constant(l), DeclWrapper::Constant(r)) => l.eq(r, engines),
-            (DeclWrapper::Enum(l), DeclWrapper::Enum(r)) => l.eq(r, engines),
+            (DeclWrapper::Function(l), DeclWrapper::Function(r)) => l.eq(r, type_engine),
+            (DeclWrapper::Trait(l), DeclWrapper::Trait(r)) => l.eq(r, type_engine),
+            (DeclWrapper::TraitFn(l), DeclWrapper::TraitFn(r)) => l.eq(r, type_engine),
+            (DeclWrapper::ImplTrait(l), DeclWrapper::ImplTrait(r)) => l.eq(r, type_engine),
+            (DeclWrapper::Struct(l), DeclWrapper::Struct(r)) => l.eq(r, type_engine),
+            (DeclWrapper::Storage(l), DeclWrapper::Storage(r)) => l.eq(r, type_engine),
+            (DeclWrapper::Abi(l), DeclWrapper::Abi(r)) => l.eq(r, type_engine),
+            (DeclWrapper::Constant(l), DeclWrapper::Constant(r)) => l.eq(r, type_engine),
+            (DeclWrapper::Enum(l), DeclWrapper::Enum(r)) => l.eq(r, type_engine),
             _ => false,
         }
     }

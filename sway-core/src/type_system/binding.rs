@@ -270,7 +270,8 @@ impl TypeBinding<CallPath> {
                 // take any trait methods that apply to this type and copy them to the new type
                 ctx.namespace.insert_trait_implementation_for_type(
                     engines,
-                    new_copy.create_type_id(engines),
+                    todo!(),
+                    // new_copy.create_type_id(engines),
                 );
 
                 // insert the new copy into the declaration engine

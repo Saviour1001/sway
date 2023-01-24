@@ -57,7 +57,7 @@ impl RenderedDocumentation {
                                 doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
                             }
                         },
-                        EnumDeclaration(_) => match doc_links.get_mut(&BlockTitle::Enums) {
+                        EnumDeclaration(_, _) => match doc_links.get_mut(&BlockTitle::Enums) {
                             Some(links) => links.push(doc.link()),
                             None => {
                                 doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
@@ -104,7 +104,7 @@ impl RenderedDocumentation {
                         StructDeclaration(_) => {
                             doc_links.insert(BlockTitle::Structs, vec![doc.link()]);
                         }
-                        EnumDeclaration(_) => {
+                        EnumDeclaration(_, _) => {
                             doc_links.insert(BlockTitle::Enums, vec![doc.link()]);
                         }
                         TraitDeclaration(_) => {
@@ -161,12 +161,13 @@ impl RenderedDocumentation {
                         all_docs.links.insert(BlockTitle::Structs, vec![doc.link()]);
                     }
                 },
-                EnumDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Enums) {
-                    Some(links) => links.push(doc.link()),
-                    None => {
-                        all_docs.links.insert(BlockTitle::Enums, vec![doc.link()]);
-                    }
-                },
+                EnumDeclaration(_, _) => todo!(),
+                // EnumDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Enums) {
+                //     Some(links) => links.push(doc.link()),
+                //     None => {
+                //         all_docs.links.insert(BlockTitle::Enums, vec![doc.link()]);
+                //     }
+                // },
                 TraitDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Traits) {
                     Some(links) => links.push(doc.link()),
                     None => {

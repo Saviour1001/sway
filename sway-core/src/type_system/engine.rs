@@ -34,7 +34,7 @@ impl TypeEngine {
 
         let raw_entry = id_map
             .raw_entry_mut()
-            .from_hash(ty_hash, |x| x.eq(&ty, engines));
+            .from_hash(ty_hash, |x| x.eq(&ty, self));
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
             RawEntryMut::Vacant(_) if ty.can_change(engines) => TypeId::new(self.slab.insert(ty)),
@@ -57,13 +57,8 @@ impl TypeEngine {
     }
 
     /// Checks if the given [TypeInfo] is a storage only type.
-    pub(crate) fn is_type_info_storage_only(
-        &self,
-        decl_engine: &DeclEngine,
-        ti: &TypeInfo,
-    ) -> bool {
-        self.storage_only_types
-            .exists(|x| ti.is_subset_of(x, Engines::new(self, decl_engine)))
+    pub(crate) fn is_type_info_storage_only(&self, ti: &TypeInfo) -> bool {
+        self.storage_only_types.exists(|x| ti.is_subset_of(x, self))
     }
 
     /// Given a `value` of type `T` that is able to be monomorphized and a set
@@ -233,7 +228,7 @@ impl TypeEngine {
         err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         let engines = Engines::new(self, decl_engine);
-        if !UnifyCheck::new(engines).check(received, expected) {
+        if !UnifyCheck::new(self).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
             let mut errors = vec![];
@@ -319,7 +314,7 @@ impl TypeEngine {
         err_override: Option<CompileError>,
     ) -> (Vec<CompileWarning>, Vec<CompileError>) {
         let engines = Engines::new(self, decl_engine);
-        if !UnifyCheck::new(engines).check(received, expected) {
+        if !UnifyCheck::new(self).check(received, expected) {
             // create a "mismatched type" error unless the `err_override`
             // argument has been provided
             let mut errors = vec![];
@@ -421,7 +416,7 @@ impl TypeEngine {
                         );
 
                         // create the type id from the copy
-                        let type_id = new_copy.create_type_id(engines);
+                        let type_id = todo!(); //new_copy.create_type_id(engines);
 
                         // take any trait methods that apply to this type and copy them to the new type
                         namespace.insert_trait_implementation_for_type(engines, type_id);
@@ -429,9 +424,9 @@ impl TypeEngine {
                         // return the id
                         type_id
                     }
-                    Some(ty::TyDeclaration::EnumDeclaration(decl_id, type_subst_list)) => {
+                    Some(ty::TyDeclaration::EnumDeclaration(decl_id, mut type_subst_list)) => {
                         // Get the copy from the declaration engine.
-                        let mut decl = check!(
+                        let decl = check!(
                             CompileResult::from(
                                 decl_engine.get_struct(decl_id.clone(), &name.span())
                             ),

@@ -10,13 +10,10 @@ pub struct TyCodeBlock {
     pub contents: Vec<TyAstNode>,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyCodeBlock {}
 impl PartialEqWithEngines for TyCodeBlock {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.contents.eq(&other.contents, engines)
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        self.contents.eq(&other.contents, type_engine)
     }
 }
 

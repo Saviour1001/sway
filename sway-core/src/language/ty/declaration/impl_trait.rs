@@ -17,18 +17,18 @@ pub struct TyImplTrait {
 
 impl EqWithEngines for TyImplTrait {}
 impl PartialEqWithEngines for TyImplTrait {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.impl_type_parameters
-            .eq(&other.impl_type_parameters, engines)
+            .eq(&other.impl_type_parameters, type_engine)
             && self.trait_name == other.trait_name
             && self
                 .trait_type_arguments
-                .eq(&other.trait_type_arguments, engines)
+                .eq(&other.trait_type_arguments, type_engine)
             && self.methods == other.methods
-            && type_engine
-                .get(self.implementing_for_type_id)
-                .eq(&type_engine.get(other.implementing_for_type_id), engines)
+            && type_engine.get(self.implementing_for_type_id).eq(
+                &type_engine.get(other.implementing_for_type_id),
+                type_engine,
+            )
     }
 }
 

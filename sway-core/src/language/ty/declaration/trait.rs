@@ -24,9 +24,9 @@ pub struct TyTraitDeclaration {
 
 impl EqWithEngines for TyTraitDeclaration {}
 impl PartialEqWithEngines for TyTraitDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.type_parameters.eq(&other.type_parameters, engines)
+            && self.type_parameters.eq(&other.type_parameters, type_engine)
             && self.interface_surface == other.interface_surface
             && self.methods == other.methods
             && self.supertraits == other.supertraits

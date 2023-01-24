@@ -14,8 +14,8 @@ pub struct TyStorageDeclaration {
 
 impl EqWithEngines for TyStorageDeclaration {}
 impl PartialEqWithEngines for TyStorageDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        self.fields.eq(&other.fields, engines) && self.attributes == other.attributes
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        self.fields.eq(&other.fields, type_engine) && self.attributes == other.attributes
     }
 }
 
@@ -174,18 +174,14 @@ pub struct TyStorageField {
     pub attributes: transform::AttributesMap,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyStorageField {}
 impl PartialEqWithEngines for TyStorageField {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
             && type_engine
                 .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
-            && self.initializer.eq(&other.initializer, engines)
+                .eq(&type_engine.get(other.type_id), type_engine)
+            && self.initializer.eq(&other.initializer, type_engine)
     }
 }
 

@@ -189,13 +189,13 @@ impl std::iter::FromIterator<TypeParameter> for TypeSubstList {
 
 impl EqWithEngines for TypeSubstList {}
 impl PartialEqWithEngines for TypeSubstList {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.len() == other.len()
             && self
                 .list
                 .iter()
                 .zip(other.list.iter())
-                .map(|(x, y)| x.eq(y, engines))
+                .map(|(x, y)| x.eq(y, type_engine))
                 .all(|x| x)
     }
 }
@@ -222,22 +222,22 @@ impl ReplaceSelfType for TypeSubstList {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub(crate) struct TypeSubstStack(Vec<TypeSubstList>);
+// #[derive(Clone, Debug, Default)]
+// pub(crate) struct TypeSubstStack(Vec<TypeSubstList>);
 
-impl TypeSubstStack {
-    pub(crate) fn peek(&self) -> Option<TypeSubstList> {
-        self.0.last().cloned()
-    }
+// impl TypeSubstStack {
+//     pub(crate) fn peek(&self) -> Option<TypeSubstList> {
+//         self.0.last().cloned()
+//     }
 
-    pub(crate) fn push(&mut self, value: TypeSubstList) {
-        self.0.push(value);
-    }
+//     pub(crate) fn push(&mut self, value: TypeSubstList) {
+//         self.0.push(value);
+//     }
 
-    pub(crate) fn pop(&mut self) -> Option<TypeSubstList> {
-        self.0.pop()
-    }
-}
+//     pub(crate) fn pop(&mut self) -> Option<TypeSubstList> {
+//         self.0.pop()
+//     }
+// }
 
 type SourceType = TypeId;
 type DestinationType = TypeId;
@@ -543,9 +543,9 @@ impl TypeSubstMap {
         let decl_engine = engines.de();
         let type_info = type_engine.get(type_id);
         match type_info {
-            TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
-            TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
-            TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
+            TypeInfo::Custom { .. } => iter_for_match(type_engine, self, &type_info),
+            TypeInfo::UnknownGeneric { .. } => iter_for_match(type_engine, self, &type_info),
+            TypeInfo::Placeholder(_) => iter_for_match(type_engine, self, &type_info),
             TypeInfo::TypeParam(_) => todo!(),
             TypeInfo::Struct {
                 fields,
@@ -685,13 +685,12 @@ impl TypeSubstMap {
 }
 
 fn iter_for_match(
-    engines: Engines<'_>,
+    type_engine: &TypeEngine,
     type_mapping: &TypeSubstMap,
     type_info: &TypeInfo,
 ) -> Option<TypeId> {
-    let type_engine = engines.te();
     for (source_type, dest_type) in type_mapping.mapping.iter() {
-        if type_engine.get(*source_type).eq(type_info, engines) {
+        if type_engine.get(*source_type).eq(type_info, type_engine) {
             return Some(*dest_type);
         }
     }

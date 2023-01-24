@@ -21,14 +21,13 @@ pub struct TyConstantDeclaration {
 
 impl EqWithEngines for TyConstantDeclaration {}
 impl PartialEqWithEngines for TyConstantDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.value.eq(&other.value, engines)
+            && self.value.eq(&other.value, type_engine)
             && self.visibility == other.visibility
             && type_engine
                 .get(self.return_type)
-                .eq(&type_engine.get(other.return_type), engines)
+                .eq(&type_engine.get(other.return_type), type_engine)
             && self.attributes == other.attributes
             && self.span == other.span
     }

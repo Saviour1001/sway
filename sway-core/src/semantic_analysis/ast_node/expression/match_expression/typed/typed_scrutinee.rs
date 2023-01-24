@@ -210,7 +210,7 @@ fn type_check_struct(
 }
 
 fn type_check_enum(
-    mut ctx: TypeCheckContext,
+    ctx: TypeCheckContext,
     call_path: CallPath<Ident>,
     value: Scrutinee,
     span: Span,
@@ -220,7 +220,6 @@ fn type_check_enum(
 
     let type_engine = ctx.type_engine;
     let decl_engine = ctx.decl_engine;
-    let engines = ctx.engines();
 
     let enum_name = match call_path.prefixes.last() {
         Some(enum_name) => enum_name,

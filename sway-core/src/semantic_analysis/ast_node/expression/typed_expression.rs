@@ -438,7 +438,7 @@ impl ty::TyExpression {
                     errors
                 );
                 ty::TyExpression {
-                    return_type: decl.create_type_id(engines),
+                    return_type: todo!(), //decl.create_type_id(engines),
                     expression: ty::TyExpressionVariant::AbiName(AbiName::Known(decl.name.into())),
                     span,
                 }
@@ -994,7 +994,7 @@ impl ty::TyExpression {
             };
             ctx.namespace
                 .resolve_call_path(&probe_call_path)
-                .flat_map(|decl| decl.expect_enum(decl_engine, &before.inner.span()))
+                .flat_map(|decl| decl.clone().expect_enum(decl_engine, &before.inner.span()))
                 .flat_map(|(decl, _, _)| decl.expect_variant_from_name(&suffix).map(drop))
                 .value
                 .is_none()

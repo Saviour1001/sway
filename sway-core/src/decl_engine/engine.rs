@@ -58,14 +58,13 @@ impl DeclEngine {
         span: Span,
     ) -> DeclId {
         let mut id_map = self.id_map.write().unwrap();
-        let engines = Engines::new(type_engine, self);
 
         let hash_builder = id_map.hasher().clone();
         let decl_hash = make_hasher(&hash_builder, type_engine)(&decl_wrapper);
 
         match id_map
             .raw_entry_mut()
-            .from_hash(decl_hash, |x| x.eq(&decl_wrapper, engines))
+            .from_hash(decl_hash, |x| x.eq(&decl_wrapper, type_engine))
         {
             RawEntryMut::Occupied(o) => o.get().clone(),
             RawEntryMut::Vacant(v) => {

@@ -74,17 +74,15 @@ impl ty::TyCodeBlock {
                         never_type_subst_list,
                     )) = never_decl_opt
                     {
-                        if let Ok(never_decl) = decl_engine.get_enum(never_decl_id.clone(), &span) {
-                            let never_type_id = type_engine.insert(
-                                decl_engine,
-                                TypeInfo::Enum {
-                                    name: never_ident,
-                                    decl_id: never_decl_id.clone(),
-                                    subst_list: never_type_subst_list.clone(),
-                                },
-                            );
-                            return never_type_id;
-                        }
+                        let never_type_id = type_engine.insert(
+                            decl_engine,
+                            TypeInfo::Enum {
+                                name: never_ident,
+                                decl_id: never_decl_id.clone(),
+                                subst_list: never_type_subst_list.clone(),
+                            },
+                        );
+                        return never_type_id;
                     }
 
                     ctx.type_engine.insert(decl_engine, TypeInfo::Unknown)

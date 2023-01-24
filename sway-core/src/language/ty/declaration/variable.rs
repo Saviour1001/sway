@@ -14,22 +14,18 @@ pub struct TyVariableDeclaration {
     pub type_ascription_span: Option<Span>,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyVariableDeclaration {}
 impl PartialEqWithEngines for TyVariableDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-            && self.body.eq(&other.body, engines)
+            && self.body.eq(&other.body, type_engine)
             && self.mutability == other.mutability
             && type_engine
                 .get(self.return_type)
-                .eq(&type_engine.get(other.return_type), engines)
+                .eq(&type_engine.get(other.return_type), type_engine)
             && type_engine
                 .get(self.type_ascription)
-                .eq(&type_engine.get(other.type_ascription), engines)
+                .eq(&type_engine.get(other.type_ascription), type_engine)
     }
 }
 

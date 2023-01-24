@@ -27,9 +27,6 @@ pub struct TypeParameter {
     pub(crate) trait_constraints_span: Span,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TypeParameter {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         type_engine.get(self.type_id).hash(state, type_engine);
@@ -38,18 +35,16 @@ impl HashWithEngines for TypeParameter {
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TypeParameter {}
 impl PartialEqWithEngines for TypeParameter {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         type_engine
             .get(self.type_id)
-            .eq(&type_engine.get(other.type_id), engines)
+            .eq(&type_engine.get(other.type_id), type_engine)
             && self.name_ident == other.name_ident
-            && self.trait_constraints.eq(&other.trait_constraints, engines)
+            && self
+                .trait_constraints
+                .eq(&other.trait_constraints, type_engine)
     }
 }
 
@@ -185,8 +180,8 @@ impl TypeParameter {
                 },
             ),
             initial_type_id,
-            trait_constraints,
-            trait_constraints_span,
+            trait_constraints: trait_constraints.clone(),
+            trait_constraints_span: trait_constraints_span.clone(),
         };
 
         // Create the [TypeParameter] that refers to the type subst list to go
@@ -196,7 +191,7 @@ impl TypeParameter {
             name_ident: name_ident.clone(),
             type_id: subst_list_ref_id,
             initial_type_id,
-            trait_constraints,
+            trait_constraints: trait_constraints.clone(),
             trait_constraints_span,
         };
         let subst_list_ref_decl = ty::TyDeclaration::GenericTypeForFunctionScope {
@@ -221,7 +216,7 @@ impl TypeParameter {
         // Insert a reference to the type parameter into the namespace as a
         // dummy type declaration.
         ctx.namespace
-            .insert_symbol(name_ident.clone(), subst_list_ref_decl)
+            .insert_symbol(name_ident, subst_list_ref_decl)
             .ok(&mut warnings, &mut errors);
 
         ok((type_subst, subst_list_ref), warnings, errors)

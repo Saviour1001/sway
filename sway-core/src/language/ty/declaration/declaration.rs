@@ -31,14 +31,11 @@ pub enum TyDeclaration {
     StorageDeclaration(DeclId),
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TyDeclaration {}
 impl PartialEqWithEngines for TyDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         match (self, other) {
-            (Self::VariableDeclaration(x), Self::VariableDeclaration(y)) => x.eq(y, engines),
+            (Self::VariableDeclaration(x), Self::VariableDeclaration(y)) => x.eq(y, type_engine),
             (Self::ConstantDeclaration(x), Self::ConstantDeclaration(y)) => x == y,
             (Self::FunctionDeclaration(x), Self::FunctionDeclaration(y)) => x == y,
             (Self::TraitDeclaration(x), Self::TraitDeclaration(y)) => x == y,
@@ -590,7 +587,8 @@ impl TyDeclaration {
                     warnings,
                     errors
                 );
-                decl.create_type_id(engines)
+                todo!()
+                // decl.create_type_id(engines)
             }
             TyDeclaration::EnumDeclaration(decl_id, type_subst_list) => {
                 let decl = check!(

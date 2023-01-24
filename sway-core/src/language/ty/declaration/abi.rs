@@ -16,7 +16,7 @@ pub struct TyAbiDeclaration {
 
 impl EqWithEngines for TyAbiDeclaration {}
 impl PartialEqWithEngines for TyAbiDeclaration {
-    fn eq(&self, other: &Self, engines: Engines<'_>) -> bool {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
         && self.interface_surface == other.interface_surface
         && self.methods == other.methods
