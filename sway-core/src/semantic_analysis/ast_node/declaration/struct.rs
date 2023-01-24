@@ -9,7 +9,7 @@ impl ty::TyStructDeclaration {
     pub(crate) fn type_check(
         ctx: TypeCheckContext,
         decl: StructDeclaration,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(ty::TyStructDeclaration, TypeSubstList)> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -29,12 +29,20 @@ impl ty::TyStructDeclaration {
 
         // Type check the type parameters, which will insert them into the
         // namespace.
-        let (mut new_type_parameters, _) = check!(
+        let (new_type_parameters, type_subst_list) = check!(
             TypeParameter::type_check_type_parameters(ctx.by_ref(), type_parameters, false),
             return err(warnings, errors),
             warnings,
             errors
         );
+
+        // Push the new type subst list onto the stack.
+        // NOTE: We don't ever need to pop this off of the stack because this
+        // push happens inside of a fresh typing context with a fresh copy of
+        // the namespace.
+        ctx.namespace
+            .get_mut_type_subst_stack()
+            .push(type_subst_list.clone());
 
         // type check the fields
         let mut new_fields = vec![];
@@ -57,7 +65,7 @@ impl ty::TyStructDeclaration {
             attributes,
         };
 
-        ok(decl, warnings, errors)
+        ok((decl, type_subst_list), warnings, errors)
     }
 }
 

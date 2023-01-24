@@ -275,16 +275,17 @@ impl ty::TyDeclaration {
             }
             parsed::Declaration::StructDeclaration(decl) => {
                 let span = decl.span.clone();
-                let decl = check!(
+                let (struct_decl, struct_subst_list) = check!(
                     ty::TyStructDeclaration::type_check(ctx.by_ref(), decl),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,
                     errors
                 );
-                let name = decl.name.clone();
-                let decl_id = decl_engine.insert(type_engine, decl);
-                let decl: ty::TyDeclaration = todo!(); //ty::TyDeclaration::StructDeclaration(decl_id);
-                                                       // insert the struct decl into namespace
+                let name = struct_decl.name.clone();
+                let decl: ty::TyDeclaration = ty::TyDeclaration::StructDeclaration(
+                    decl_engine.insert(type_engine, struct_decl),
+                    struct_subst_list,
+                );
                 check!(
                     ctx.namespace.insert_symbol(name, decl.clone()),
                     return err(warnings, errors),

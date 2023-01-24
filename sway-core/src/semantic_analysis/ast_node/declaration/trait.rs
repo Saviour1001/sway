@@ -50,7 +50,7 @@ impl ty::TyTraitDeclaration {
 
         // Type check the type parameters, which will insert them into the
         // namespace.
-        let (mut new_type_parameters, _) = check!(
+        let (new_type_parameters, _) = check!(
             TypeParameter::type_check_type_parameters(ctx.by_ref(), type_parameters, true),
             return err(warnings, errors),
             warnings,

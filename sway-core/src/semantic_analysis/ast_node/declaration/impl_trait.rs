@@ -40,7 +40,7 @@ impl ty::TyImplTrait {
 
         // Type check the type parameters, which will insert them into the
         // namespace.
-        let (mut new_impl_type_parameters, _) = check!(
+        let (new_impl_type_parameters, _) = check!(
             TypeParameter::type_check_type_parameters(ctx.by_ref(), impl_type_parameters, false),
             return err(warnings, errors),
             warnings,
@@ -448,7 +448,7 @@ impl ty::TyImplTrait {
 
         // Type check the type parameters, which will insert them into the
         // namespace.
-        let (mut new_impl_type_parameters, _) = check!(
+        let (new_impl_type_parameters, _) = check!(
             TypeParameter::type_check_type_parameters(ctx.by_ref(), impl_type_parameters, false),
             return err(warnings, errors),
             warnings,

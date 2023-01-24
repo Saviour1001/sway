@@ -390,46 +390,55 @@ impl TypeEngine {
                     .ok(&mut warnings, &mut errors)
                     .cloned()
                 {
-                    Some(ty::TyDeclaration::StructDeclaration(original_id, _)) => {
-                        todo!()
-                        // // get the copy from the declaration engine
-                        // let mut new_copy = check!(
-                        //     CompileResult::from(decl_engine.get_struct(original_id, &name.span())),
-                        //     return err(warnings, errors),
-                        //     warnings,
-                        //     errors
-                        // );
+                    Some(ty::TyDeclaration::StructDeclaration(decl_id, mut type_subst_list)) => {
+                        // Get the copy from the declaration engine.
+                        let decl = check!(
+                            CompileResult::from(
+                                decl_engine.get_struct(decl_id.clone(), &name.span())
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
 
-                        // // monomorphize the copy, in place
-                        // check!(
-                        //     self.monomorphize(
-                        //         decl_engine,
-                        //         &mut new_copy,
-                        //         &mut type_arguments.unwrap_or_default(),
-                        //         enforce_type_arguments,
-                        //         span,
-                        //         namespace,
-                        //         mod_path
-                        //     ),
-                        //     return err(warnings, errors),
-                        //     warnings,
-                        //     errors,
-                        // );
+                        // Monomorphize the type subst list.
+                        check!(
+                            type_subst_list.monomorphize(
+                                engines,
+                                &mut type_arguments.unwrap_or_default(),
+                                enforce_type_arguments,
+                                &decl.name,
+                                span,
+                                namespace,
+                                mod_path
+                            ),
+                            return err(warnings, errors),
+                            warnings,
+                            errors
+                        );
 
-                        // // create the type id from the copy
-                        // let type_id = todo!(); //new_copy.create_type_id(engines);
+                        // Create a new type id from the copy.
+                        let type_id = self.insert(
+                            decl_engine,
+                            TypeInfo::Struct {
+                                name: decl.name.clone(),
+                                decl_id,
+                                subst_list: type_subst_list,
+                            },
+                        );
 
-                        // // take any trait methods that apply to this type and copy them to the new type
-                        // namespace.insert_trait_implementation_for_type(engines, type_id);
+                        // Take any trait methods that apply to this type and
+                        // copy them to the new type.
+                        namespace.insert_trait_implementation_for_type(engines, type_id);
 
-                        // // return the id
-                        // type_id
+                        // Return the id.
+                        type_id
                     }
                     Some(ty::TyDeclaration::EnumDeclaration(decl_id, mut type_subst_list)) => {
                         // Get the copy from the declaration engine.
                         let decl = check!(
                             CompileResult::from(
-                                decl_engine.get_struct(decl_id.clone(), &name.span())
+                                decl_engine.get_enum(decl_id.clone(), &name.span())
                             ),
                             return err(warnings, errors),
                             warnings,

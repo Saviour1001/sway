@@ -29,7 +29,7 @@ impl ty::TyEnumDeclaration {
 
         // Type check the type parameters, which will insert them into the
         // namespace.
-        let (mut new_type_parameters, type_subst_list) = check!(
+        let (new_type_parameters, type_subst_list) = check!(
             TypeParameter::type_check_type_parameters(ctx.by_ref(), type_parameters, false),
             return err(warnings, errors),
             warnings,
@@ -37,6 +37,9 @@ impl ty::TyEnumDeclaration {
         );
 
         // Push the new type subst list onto the stack.
+        // NOTE: We don't ever need to pop this off of the stack because this
+        // push happens inside of a fresh typing context with a fresh copy of
+        // the namespace.
         ctx.namespace
             .get_mut_type_subst_stack()
             .push(type_subst_list.clone());
