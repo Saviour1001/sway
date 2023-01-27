@@ -852,7 +852,7 @@ impl ReplaceDecls for TyExpressionVariant {
 impl DisplayWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         let s = match self {
-            TyExpressionVariant::Literal(lit) => format!("literal {}", lit),
+            TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
             TyExpressionVariant::FunctionApplication {
                 call_path: name, ..
             } => {
@@ -868,7 +868,7 @@ impl DisplayWithEngines for TyExpressionVariant {
                     .map(|field| engines.help_out(field).to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("tuple({})", fields)
+                format!("tuple({fields})")
             }
             TyExpressionVariant::Array { .. } => "array".into(),
             TyExpressionVariant::ArrayIndex { .. } => "[..]".into(),
@@ -920,7 +920,7 @@ impl DisplayWithEngines for TyExpressionVariant {
                 format!("storage field {} access", access.storage_field_name())
             }
             TyExpressionVariant::IntrinsicFunction(kind) => engines.help_out(kind).to_string(),
-            TyExpressionVariant::AbiName(n) => format!("ABI name {}", n),
+            TyExpressionVariant::AbiName(n) => format!("ABI name {n}"),
             TyExpressionVariant::EnumTag { exp } => {
                 format!("({} as tag)", engines.help_out(exp.return_type))
             }
@@ -943,14 +943,14 @@ impl DisplayWithEngines for TyExpressionVariant {
                     match index {
                         ProjectionKind::StructField { name } => place.push_str(name.as_str()),
                         ProjectionKind::TupleField { index, .. } => {
-                            write!(&mut place, "{}", index).unwrap();
+                            write!(&mut place, "{index}").unwrap();
                         }
                         ProjectionKind::ArrayIndex { index, .. } => {
-                            write!(&mut place, "{:#?}", index).unwrap();
+                            write!(&mut place, "{index:#?}").unwrap();
                         }
                     }
                 }
-                format!("reassignment to {}", place)
+                format!("reassignment to {place}")
             }
             TyExpressionVariant::StorageReassignment(storage_reassignment) => {
                 let place: String = {
@@ -960,13 +960,13 @@ impl DisplayWithEngines for TyExpressionVariant {
                         .map(|field| field.name.as_str())
                         .collect()
                 };
-                format!("storage reassignment to {}", place)
+                format!("storage reassignment to {place}")
             }
             TyExpressionVariant::Return(exp) => {
                 format!("return {}", engines.help_out(&**exp))
             }
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

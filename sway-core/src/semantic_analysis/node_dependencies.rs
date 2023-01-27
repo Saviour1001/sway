@@ -799,13 +799,13 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Contract => "contract",
         TypeInfo::ErrorRecovery => "err_recov",
         TypeInfo::Unknown => "unknown",
-        TypeInfo::UnknownGeneric { name, .. } => return format!("generic {}", name),
+        TypeInfo::UnknownGeneric { name, .. } => return format!("generic {name}"),
         TypeInfo::Placeholder(_) => "_",
         TypeInfo::TypeParam(n) => {
             return format!("typeparam({})", n);
         }
         TypeInfo::ContractCaller { abi_name, .. } => {
-            return format!("contract caller {}", abi_name);
+            return format!("contract caller {abi_name}");
         }
         TypeInfo::Struct { .. } => "struct",
         TypeInfo::Enum { .. } => "enum",

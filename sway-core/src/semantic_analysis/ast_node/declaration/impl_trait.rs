@@ -823,9 +823,6 @@ fn type_check_impl_method(
             });
         }
 
-        impl_method_param
-            .type_id
-            .replace_self_type(engines, self_type);
         if !type_engine.get(impl_method_param.type_id).eq(
             &type_engine.get(impl_method_signature_param.type_id),
             type_engine,
@@ -891,9 +888,6 @@ fn type_check_impl_method(
         (true, true) | (false, false) => (), // no payability mismatch
     }
 
-    impl_method
-        .return_type
-        .replace_self_type(engines, self_type);
     if !type_engine.get(impl_method.return_type).eq(
         &type_engine.get(impl_method_signature.return_type),
         type_engine,
@@ -930,13 +924,13 @@ fn type_check_impl_method(
             .cloned()
             .map(|x| WithEngines::new(x, engines))
             .collect();
-    let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> = ctx
-        .self_type()
-        .unconstrained_type_parameters(engines, impl_type_parameters)
-        .into_iter()
-        .cloned()
-        .map(|x| WithEngines::new(x, engines))
-        .collect::<HashSet<_>>();
+    let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
+        self_type
+            .unconstrained_type_parameters(engines, impl_type_parameters)
+            .into_iter()
+            .cloned()
+            .map(|x| WithEngines::new(x, engines))
+            .collect::<HashSet<_>>();
     let mut unconstrained_type_parameters_to_be_added =
         unconstrained_type_parameters_in_this_function
             .difference(&unconstrained_type_parameters_in_the_type)
@@ -1041,7 +1035,7 @@ fn check_for_unconstrained_type_parameters(
     // create an error for all of the leftover generics
     for (k, v) in defined_generics.into_iter() {
         errors.push(CompileError::UnconstrainedGenericParameter {
-            ty: format!("{}", k),
+            ty: format!("{k}"),
             span: v,
         });
     }
