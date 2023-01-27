@@ -91,12 +91,6 @@ impl ReplaceSelfType for TyFunctionDeclaration {
     }
 }
 
-impl ReplaceDecls for TyFunctionDeclaration {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        self.body.replace_decls(decl_mapping, engines);
-    }
-}
-
 impl Spanned for TyFunctionDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
@@ -191,10 +185,6 @@ impl CollectTypesMetadata for TyFunctionDeclaration {
 }
 
 impl TyFunctionDeclaration {
-    pub(crate) fn set_implementing_type(&mut self, decl: TyDeclaration) {
-        self.implementing_type = Some(decl);
-    }
-
     /// Used to create a stubbed out function when the function fails to
     /// compile, preventing cascading namespace errors.
     pub(crate) fn error(

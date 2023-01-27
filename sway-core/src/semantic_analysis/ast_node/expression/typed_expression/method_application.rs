@@ -1,5 +1,4 @@
 use crate::{
-    decl_engine::DeclId,
     error::*,
     language::{parsed::*, ty, *},
     semantic_analysis::*,
@@ -43,14 +42,16 @@ pub(crate) fn type_check_method_application(
     }
 
     // resolve the method name to a typed function declaration and type_check
-    let decl_id = check!(
+    let method_value = check!(
         resolve_method_name(ctx.by_ref(), &mut method_name_binding, args_buf.clone()),
         return err(warnings, errors),
         warnings,
         errors
     );
     let method = check!(
-        CompileResult::from(decl_engine.get_function(decl_id.clone(), &method_name_binding.span())),
+        CompileResult::from(
+            decl_engine.get_function(method_value.decl_id.clone(), &method_name_binding.span())
+        ),
         return err(warnings, errors),
         warnings,
         errors
@@ -352,7 +353,8 @@ pub(crate) fn type_check_method_application(
             call_path,
             contract_call_params: contract_call_params_map,
             arguments: typed_arguments_with_names,
-            function_decl_id: decl_id,
+            function_decl_id: method_value.decl_id,
+            function_type_subst_list: method_value.type_subst_list,
             self_state_idx,
             selector,
             type_binding: Some(method_name_binding.strip_inner()),
@@ -414,7 +416,7 @@ pub(crate) fn resolve_method_name(
     mut ctx: TypeCheckContext,
     method_name: &mut TypeBinding<MethodName>,
     arguments: VecDeque<ty::TyExpression>,
-) -> CompileResult<DeclId> {
+) -> CompileResult<ty::TyMethodValue> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -423,7 +425,7 @@ pub(crate) fn resolve_method_name(
     let engines = ctx.engines();
 
     // retrieve the function declaration using the components of the method name
-    let decl_id = match &method_name.inner {
+    let (type_id, method_prefix, method_name) = match &method_name.inner {
         MethodName::FromType {
             call_path_binding,
             method_name,
@@ -447,20 +449,7 @@ pub(crate) fn resolve_method_name(
                 errors
             );
 
-            // find the method
-            check!(
-                ctx.namespace.find_method_for_type(
-                    type_id,
-                    &type_info_prefix,
-                    method_name,
-                    ctx.self_type(),
-                    &arguments,
-                    engines,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
+            (type_id, type_info_prefix, method_name)
         }
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
@@ -472,20 +461,7 @@ pub(crate) fn resolve_method_name(
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
 
-            // find the method
-            check!(
-                ctx.namespace.find_method_for_type(
-                    type_id,
-                    &module_path,
-                    &call_path.suffix,
-                    ctx.self_type(),
-                    &arguments,
-                    engines,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
+            (type_id, module_path, &call_path.suffix)
         }
         MethodName::FromModule { method_name } => {
             // find the module that the symbol is in
@@ -497,47 +473,24 @@ pub(crate) fn resolve_method_name(
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| type_engine.insert(decl_engine, TypeInfo::Unknown));
 
-            // find the method
-            check!(
-                ctx.namespace.find_method_for_type(
-                    type_id,
-                    &module_path,
-                    method_name,
-                    ctx.self_type(),
-                    &arguments,
-                    engines,
-                ),
-                return err(warnings, errors),
-                warnings,
-                errors
-            )
+            (type_id, module_path, method_name)
         }
     };
 
-    let mut func_decl = check!(
-        CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-
-    // monomorphize the function declaration
-    let method_name_span = method_name.span();
-    check!(
-        ctx.monomorphize(
-            &mut func_decl,
-            &mut method_name.type_arguments,
-            EnforceTypeArguments::No,
-            &method_name_span,
+    // find the method
+    let method = check!(
+        ctx.namespace.find_method_for_type(
+            type_id,
+            &method_prefix,
+            method_name,
+            ctx.self_type(),
+            &arguments,
+            engines,
         ),
         return err(warnings, errors),
         warnings,
         errors
     );
 
-    let decl_id = decl_engine
-        .insert(type_engine, func_decl)
-        .with_parent(ctx.decl_engine, decl_id);
-
-    ok(decl_id, warnings, errors)
+    ok(method, warnings, errors)
 }

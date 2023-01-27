@@ -2,6 +2,8 @@ use std::{collections::BTreeMap, fmt};
 
 use sway_types::Ident;
 
+use crate::language::ty;
+
 use super::DeclId;
 
 type SourceDecl = DeclId;
@@ -47,16 +49,17 @@ impl DeclMapping {
     }
 
     pub(crate) fn from_stub_and_impld_decl_ids(
-        stub_decl_ids: BTreeMap<Ident, DeclId>,
-        impld_decl_ids: BTreeMap<Ident, DeclId>,
+        stub_decl_ids: BTreeMap<Ident, ty::TyMethodValue>,
+        impld_decl_ids: BTreeMap<Ident, ty::TyMethodValue>,
     ) -> DeclMapping {
-        let mut mapping = vec![];
-        for (stub_decl_name, stub_decl_id) in stub_decl_ids.into_iter() {
-            if let Some(new_decl_id) = impld_decl_ids.get(&stub_decl_name) {
-                mapping.push((stub_decl_id, new_decl_id.clone()));
-            }
-        }
-        DeclMapping { mapping }
+        todo!()
+        // let mut mapping = vec![];
+        // for (stub_decl_name, stub_decl_id) in stub_decl_ids.into_iter() {
+        //     if let Some(new_decl_id) = impld_decl_ids.get(&stub_decl_name) {
+        //         mapping.push((stub_decl_id, new_decl_id.clone()));
+        //     }
+        // }
+        // DeclMapping { mapping }
     }
 
     pub(crate) fn find_match(&self, decl_id: &SourceDecl) -> Option<DestinationDecl> {

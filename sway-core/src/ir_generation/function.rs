@@ -231,40 +231,41 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::Literal(l) => {
                 Ok(convert_literal_to_value(context, l).add_metadatum(context, span_md_idx))
             }
-            ty::TyExpressionVariant::FunctionApplication {
-                call_path: name,
-                contract_call_params,
-                arguments,
-                function_decl_id,
-                self_state_idx,
-                selector,
-                type_binding: _,
-            } => {
-                if let Some(metadata) = selector {
-                    self.compile_contract_call(
-                        context,
-                        md_mgr,
-                        metadata,
-                        contract_call_params,
-                        name.suffix.as_str(),
-                        arguments,
-                        ast_expr.return_type,
-                        span_md_idx,
-                    )
-                } else {
-                    let function_decl = self
-                        .decl_engine
-                        .get_function(function_decl_id.clone(), &ast_expr.span)?;
-                    self.compile_fn_call(
-                        context,
-                        md_mgr,
-                        arguments,
-                        &function_decl,
-                        *self_state_idx,
-                        span_md_idx,
-                    )
-                }
-            }
+            ty::TyExpressionVariant::FunctionApplication { .. } => todo!(),
+            // ty::TyExpressionVariant::FunctionApplication {
+            //     call_path: name,
+            //     contract_call_params,
+            //     arguments,
+            //     function_decl_id,
+            //     self_state_idx,
+            //     selector,
+            //     type_binding: _,
+            // } => {
+            //     if let Some(metadata) = selector {
+            //         self.compile_contract_call(
+            //             context,
+            //             md_mgr,
+            //             metadata,
+            //             contract_call_params,
+            //             name.suffix.as_str(),
+            //             arguments,
+            //             ast_expr.return_type,
+            //             span_md_idx,
+            //         )
+            //     } else {
+            //         let function_decl = self
+            //             .decl_engine
+            //             .get_function(function_decl_id.clone(), &ast_expr.span)?;
+            //         self.compile_fn_call(
+            //             context,
+            //             md_mgr,
+            //             arguments,
+            //             &function_decl,
+            //             *self_state_idx,
+            //             span_md_idx,
+            //         )
+            //     }
+            // }
             ty::TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
                 self.compile_lazy_op(context, md_mgr, op, lhs, rhs, span_md_idx)
             }

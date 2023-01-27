@@ -70,7 +70,7 @@ impl ty::TyExpression {
             span: call_path.span(),
         };
         let arguments = VecDeque::from(arguments);
-        let decl_id = check!(
+        let method_value = check!(
             resolve_method_name(ctx, &mut method_name_binding, arguments.clone()),
             return err(warnings, errors),
             warnings,
@@ -78,7 +78,7 @@ impl ty::TyExpression {
         );
         let method = check!(
             CompileResult::from(
-                decl_engine.get_function(decl_id.clone(), &method_name_binding.span())
+                decl_engine.get_function(method_value.decl_id.clone(), &method_name_binding.span())
             ),
             return err(warnings, errors),
             warnings,
@@ -103,7 +103,8 @@ impl ty::TyExpression {
                 call_path,
                 contract_call_params: HashMap::new(),
                 arguments: args_and_names,
-                function_decl_id: decl_id,
+                function_decl_id: method_value.decl_id,
+                function_type_subst_list: method_value.type_subst_list,
                 self_state_idx: None,
                 selector: None,
                 type_binding: None,
@@ -482,7 +483,7 @@ impl ty::TyExpression {
         );
 
         // check that the decl is a function decl
-        let function_decl = check!(
+        let (function_decl, function_decl_id, function_type_subst_list) = check!(
             unknown_decl.expect_function(decl_engine, &span),
             return err(warnings, errors),
             warnings,
@@ -491,6 +492,8 @@ impl ty::TyExpression {
 
         instantiate_function_application(
             ctx,
+            function_decl_id,
+            function_type_subst_list,
             function_decl,
             call_path_binding,
             Some(arguments),
@@ -1179,11 +1182,20 @@ impl ty::TyExpression {
                     errors
                 )
             }
-            (false, Some(func_decl), None, None) => {
+            (false, Some(maybe_function), None, None) => {
+                let (function_decl, function_decl_id, function_type_subst_list) = maybe_function;
                 warnings.append(&mut function_probe_warnings);
                 errors.append(&mut function_probe_errors);
                 check!(
-                    instantiate_function_application(ctx, func_decl, call_path_binding, args, span),
+                    instantiate_function_application(
+                        ctx,
+                        function_decl_id,
+                        function_type_subst_list,
+                        function_decl,
+                        call_path_binding,
+                        args,
+                        span
+                    ),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -1339,24 +1351,27 @@ impl ty::TyExpression {
             },
         );
 
-        // Retrieve the interface surface for this abi.
+        // Retrieve all of the methods for this ABI to insert into the
+        // namespace.
         let mut abi_methods = vec![];
-        for decl_id in interface_surface.into_iter() {
+        for method_value in interface_surface.into_iter() {
             let method = check!(
-                CompileResult::from(decl_engine.get_trait_fn(decl_id.clone(), &name.span())),
+                CompileResult::from(
+                    decl_engine.get_trait_fn(method_value.decl_id.clone(), &name.span())
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
             );
-            abi_methods.push(
-                decl_engine
-                    .insert(type_engine, method.to_dummy_func(Mode::ImplAbiFn))
-                    .with_parent(decl_engine, decl_id),
-            );
+            abi_methods.push(ty::TyMethodValue::new(
+                method.name.clone(),
+                decl_engine.insert(type_engine, method.to_dummy_func(Mode::ImplAbiFn)),
+                TypeSubstList::new(),
+            ));
         }
-
-        // Retrieve the methods for this abi.
-        abi_methods.append(&mut methods);
+        for method_value in methods.into_iter() {
+            abi_methods.push(method_value);
+        }
 
         // Insert the abi methods into the namespace.
         check!(
@@ -1364,7 +1379,7 @@ impl ty::TyExpression {
                 abi_name.clone(),
                 vec![],
                 return_type,
-                &abi_methods,
+                abi_methods,
                 &span,
                 false,
                 engines,

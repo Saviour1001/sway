@@ -119,43 +119,45 @@ impl HashWithEngines for TyDeclaration {
 
 impl SubstTypes for TyDeclaration {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
-        use TyDeclaration::*;
-        match self {
-            VariableDeclaration(ref mut var_decl) => var_decl.subst(type_mapping, engines),
-            FunctionDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
-            TraitDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
-            StructDeclaration(_, _) | EnumDeclaration(_, _) => todo!(),
-            // StructDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
-            // EnumDeclaration(ref mut decl_id, _) => decl_id.subst(type_mapping, engines),
-            ImplTrait(decl_id) => decl_id.subst(type_mapping, engines),
-            // generics in an ABI is unsupported by design
-            AbiDeclaration(..)
-            | ConstantDeclaration(_)
-            | StorageDeclaration(..)
-            | GenericTypeForFunctionScope { .. }
-            | ErrorRecovery(_) => (),
-        }
+        todo!();
+        // use TyDeclaration::*;
+        // match self {
+        //     VariableDeclaration(ref mut var_decl) => var_decl.subst(type_mapping, engines),
+        //     FunctionDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
+        //     TraitDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
+        //     StructDeclaration(_, _) | EnumDeclaration(_, _) => todo!(),
+        //     // StructDeclaration(ref mut decl_id) => decl_id.subst(type_mapping, engines),
+        //     // EnumDeclaration(ref mut decl_id, _) => decl_id.subst(type_mapping, engines),
+        //     ImplTrait(decl_id) => decl_id.subst(type_mapping, engines),
+        //     // generics in an ABI is unsupported by design
+        //     AbiDeclaration(..)
+        //     | ConstantDeclaration(_)
+        //     | StorageDeclaration(..)
+        //     | GenericTypeForFunctionScope { .. }
+        //     | ErrorRecovery(_) => (),
+        // }
     }
 }
 
 impl ReplaceSelfType for TyDeclaration {
     fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        use TyDeclaration::*;
-        match self {
-            VariableDeclaration(ref mut var_decl) => var_decl.replace_self_type(engines, self_type),
-            FunctionDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
-            TraitDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
-            StructDeclaration(_, _) | EnumDeclaration(_, _) => todo!(),
-            // StructDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
-            // EnumDeclaration(ref mut decl_id, _) => decl_id.replace_self_type(engines, self_type),
-            ImplTrait(decl_id) => decl_id.replace_self_type(engines, self_type),
-            // generics in an ABI is unsupported by design
-            AbiDeclaration(..)
-            | ConstantDeclaration(_)
-            | StorageDeclaration(..)
-            | GenericTypeForFunctionScope { .. }
-            | ErrorRecovery(_) => (),
-        }
+        todo!();
+        // use TyDeclaration::*;
+        // match self {
+        //     VariableDeclaration(ref mut var_decl) => var_decl.replace_self_type(engines, self_type),
+        //     FunctionDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
+        //     TraitDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
+        //     StructDeclaration(_, _) | EnumDeclaration(_, _) => todo!(),
+        //     // StructDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
+        //     // EnumDeclaration(ref mut decl_id, _) => decl_id.replace_self_type(engines, self_type),
+        //     ImplTrait(decl_id) => decl_id.replace_self_type(engines, self_type),
+        //     // generics in an ABI is unsupported by design
+        //     AbiDeclaration(..)
+        //     | ConstantDeclaration(_)
+        //     | StorageDeclaration(..)
+        //     | GenericTypeForFunctionScope { .. }
+        //     | ErrorRecovery(_) => (),
+        // }
     }
 }
 
@@ -447,21 +449,17 @@ impl TyDeclaration {
     ///
     /// Returns an error if `self` is not a [TyFunctionDeclaration].
     pub(crate) fn expect_function(
-        &self,
+        self,
         decl_engine: &DeclEngine,
         access_span: &Span,
-    ) -> CompileResult<TyFunctionDeclaration> {
+    ) -> CompileResult<(TyFunctionDeclaration, DeclId, TypeSubstList)> {
         let mut warnings = vec![];
         let mut errors = vec![];
         match self {
             TyDeclaration::FunctionDeclaration(decl_id) => {
-                let decl = check!(
-                    CompileResult::from(decl_engine.get_function(decl_id.clone(), access_span)),
-                    return err(warnings, errors),
-                    warnings,
-                    errors,
-                );
-                ok(decl, warnings, errors)
+                let type_subst_list: TypeSubstList = todo!();
+                CompileResult::from(decl_engine.get_function(decl_id.clone(), access_span))
+                    .map(|decl| (decl, decl_id.clone(), type_subst_list))
             }
             TyDeclaration::ErrorRecovery(_) => err(vec![], vec![]),
             decl => {

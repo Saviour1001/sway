@@ -229,8 +229,8 @@ impl TypeParameter {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut original_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
-        let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+        let mut original_methods: BTreeMap<Ident, ty::TyMethodValue> = BTreeMap::new();
+        let mut impld_methods: BTreeMap<Ident, ty::TyMethodValue> = BTreeMap::new();
 
         for type_param in type_parameters.iter() {
             let TypeParameter {
@@ -260,20 +260,20 @@ impl TypeParameter {
                     type_arguments: trait_type_arguments,
                 } = trait_constraint;
 
-                let (trait_original_method_ids, trait_impld_method_ids) = check!(
+                let (trait_original_methods, trait_impld_methods) = check!(
                     handle_trait(ctx.by_ref(), *type_id, trait_name, trait_type_arguments),
                     continue,
                     warnings,
                     errors
                 );
-                original_method_ids.extend(trait_original_method_ids);
-                impld_method_ids.extend(trait_impld_method_ids);
+                original_methods.extend(trait_original_methods);
+                impld_methods.extend(trait_impld_methods);
             }
         }
 
         if errors.is_empty() {
             let decl_mapping =
-                DeclMapping::from_stub_and_impld_decl_ids(original_method_ids, impld_method_ids);
+                DeclMapping::from_stub_and_impld_decl_ids(original_methods, impld_methods);
             ok(decl_mapping, warnings, errors)
         } else {
             err(warnings, errors)
@@ -286,14 +286,17 @@ fn handle_trait(
     type_id: TypeId,
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
-) -> CompileResult<(BTreeMap<Ident, DeclId>, BTreeMap<Ident, DeclId>)> {
+) -> CompileResult<(
+    BTreeMap<Ident, ty::TyMethodValue>,
+    BTreeMap<Ident, ty::TyMethodValue>,
+)> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
     let decl_engine = ctx.decl_engine;
 
-    let mut original_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
-    let mut impld_method_ids: BTreeMap<Ident, DeclId> = BTreeMap::new();
+    let mut original_methods: BTreeMap<Ident, ty::TyMethodValue> = BTreeMap::new();
+    let mut impld_methods: BTreeMap<Ident, ty::TyMethodValue> = BTreeMap::new();
 
     match ctx
         .namespace
@@ -309,7 +312,7 @@ fn handle_trait(
                 errors
             );
 
-            let (trait_original_method_ids, trait_method_ids, trait_impld_method_ids) = check!(
+            let (trait_original_methods, trait_methods, trait_impld_methods) = check!(
                 trait_decl.retrieve_interface_surface_and_methods_and_implemented_methods_for_type(
                     ctx.by_ref(),
                     type_id,
@@ -320,19 +323,19 @@ fn handle_trait(
                 warnings,
                 errors
             );
-            original_method_ids.extend(trait_original_method_ids);
-            original_method_ids.extend(trait_method_ids);
-            impld_method_ids.extend(trait_impld_method_ids);
+            original_methods.extend(trait_original_methods);
+            original_methods.extend(trait_methods);
+            impld_methods.extend(trait_impld_methods);
 
             for supertrait in trait_decl.supertraits.iter() {
-                let (supertrait_original_method_ids, supertrait_impld_method_ids) = check!(
+                let (supertrait_original_methods, supertrait_impld_methods) = check!(
                     handle_trait(ctx.by_ref(), type_id, &supertrait.name, &[]),
                     continue,
                     warnings,
                     errors
                 );
-                original_method_ids.extend(supertrait_original_method_ids);
-                impld_method_ids.extend(supertrait_impld_method_ids);
+                original_methods.extend(supertrait_original_methods);
+                impld_methods.extend(supertrait_impld_methods);
             }
         }
         _ => errors.push(CompileError::TraitNotFound {
@@ -342,7 +345,7 @@ fn handle_trait(
     }
 
     if errors.is_empty() {
-        ok((original_method_ids, impld_method_ids), warnings, errors)
+        ok((original_methods, impld_methods), warnings, errors)
     } else {
         err(warnings, errors)
     }

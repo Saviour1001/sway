@@ -494,7 +494,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
-    methods: &[DeclId],
+    methods: &[ty::TyMethodValue],
     entry_node: NodeIndex,
     tree_type: &TreeType,
     options: NodeConnectionOptions,
@@ -513,14 +513,14 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     };
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
-    for method_decl_id in methods {
-        let fn_decl = decl_engine.get_function(method_decl_id.clone(), &trait_name.span())?;
+    for method_value in methods {
+        let fn_decl = decl_engine.get_function(method_value.decl_id.clone(), &trait_name.span())?;
         let fn_decl_entry_node = graph.add_node(
             engines,
             ControlFlowGraphNode::MethodDeclaration {
                 span: fn_decl.span.clone(),
                 method_name: fn_decl.name.clone(),
-                method_decl_id: method_decl_id.clone(),
+                method_decl_id: method_value.decl_id.clone(),
                 engines,
             },
         );
@@ -601,8 +601,8 @@ fn connect_abi_declaration(
     // If a struct type is used as a return type in the interface surface
     // of the contract, then assume that any fields inside the struct can
     // be used outside of the contract.
-    for fn_decl_id in decl.interface_surface.iter() {
-        let fn_decl = decl_engine.get_trait_fn(fn_decl_id.clone(), &decl.span)?;
+    for method_value in decl.interface_surface.iter() {
+        let fn_decl = decl_engine.get_trait_fn(method_value.decl_id.clone(), &decl.span)?;
         if let Some(TypeInfo::Struct { name, .. }) =
             get_struct_type_info_from_type_id(type_engine, fn_decl.return_type)?
         {

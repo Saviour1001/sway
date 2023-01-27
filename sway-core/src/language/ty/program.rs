@@ -111,8 +111,8 @@ impl TyProgram {
                         errors
                     );
                     if matches!(ty_engine.get(implementing_for_type_id), TypeInfo::Contract) {
-                        for method_id in methods {
-                            match decl_engine.get_function(method_id, &span) {
+                        for method in methods {
+                            match decl_engine.get_function(method.decl_id, &span) {
                                 Ok(method) => abi_entries.push(method),
                                 Err(err) => errors.push(err),
                             }

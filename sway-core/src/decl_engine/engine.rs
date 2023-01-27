@@ -1,10 +1,6 @@
 use hashbrown::hash_map::RawEntryMut;
 use hashbrown::HashMap;
-use std::{
-    collections::{HashSet, VecDeque},
-    fmt,
-    sync::RwLock,
-};
+use std::{fmt, sync::RwLock};
 
 use sway_error::error::CompileError;
 use sway_types::Span;
@@ -22,7 +18,6 @@ use crate::{
 pub struct DeclEngine {
     slab: ConcurrentSlab<DeclWrapper>,
     id_map: RwLock<HashMap<DeclWrapper, DeclId>>,
-    parents: RwLock<HashMap<usize, Vec<DeclId>>>,
 }
 
 impl fmt::Display for DeclEngine {
@@ -78,43 +73,6 @@ impl DeclEngine {
                 decl_id
             }
         }
-    }
-
-    /// Given a [DeclId] `index`, finds all the parents of `index` and all the
-    /// recursive parents of those parents, and so on. Does not perform
-    /// duplicated computation---if the parents of a [DeclId] have already been
-    /// found, we do not find them again.
-    #[allow(clippy::map_entry)]
-    pub(crate) fn find_all_parents(&self, engines: Engines<'_>, index: DeclId) -> Vec<DeclId> {
-        let parents = self.parents.read().unwrap();
-        let mut acc_parents: HashMap<usize, DeclId> = HashMap::new();
-        let mut already_checked: HashSet<usize> = HashSet::new();
-        let mut left_to_check: VecDeque<DeclId> = VecDeque::from([index]);
-        while let Some(curr) = left_to_check.pop_front() {
-            if !already_checked.insert(*curr) {
-                continue;
-            }
-            if let Some(curr_parents) = parents.get(&*curr) {
-                for curr_parent in curr_parents.iter() {
-                    if !acc_parents.contains_key(&**curr_parent) {
-                        acc_parents.insert(**curr_parent, curr_parent.clone());
-                    }
-                    todo!();
-                    // if !left_to_check.iter().any(|x| x.eq(curr_parent, engines)) {
-                    //     left_to_check.push_back(curr_parent.clone());
-                    // }
-                }
-            }
-        }
-        acc_parents.values().cloned().collect()
-    }
-
-    pub(crate) fn register_parent(&self, index: &DeclId, parent: DeclId) {
-        let mut parents = self.parents.write().unwrap();
-        parents
-            .entry(**index)
-            .and_modify(|e| e.push(parent.clone()))
-            .or_insert_with(|| vec![parent]);
     }
 
     pub fn get_function(

@@ -494,7 +494,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                 decl_id,
                 subst_list,
             } => {
-                let mut decl = decl_engine
+                let decl = decl_engine
                     .get_enum(decl_id.clone(), &name.span())
                     .expect("unknown enum");
                 let unconstrained_in_subst_list = subst_list
@@ -521,7 +521,7 @@ impl UnconstrainedTypeParameters for TypeInfo {
                 decl_id,
                 subst_list,
             } => {
-                let mut decl = decl_engine
+                let decl = decl_engine
                     .get_struct(decl_id.clone(), &name.span())
                     .expect("unknown struct");
                 let unconstrained_in_subst_list = subst_list
@@ -786,7 +786,7 @@ impl TypeInfo {
                 decl_id,
                 subst_list,
             } => {
-                let mut decl = decl_engine
+                let decl = decl_engine
                     .get_enum(decl_id.clone(), &name.span())
                     .expect("unknown enum");
                 subst_list
@@ -802,7 +802,7 @@ impl TypeInfo {
                 decl_id,
                 subst_list,
             } => {
-                let mut decl = decl_engine
+                let decl = decl_engine
                     .get_struct(decl_id.clone(), &name.span())
                     .expect("unknown struct");
                 subst_list
@@ -994,8 +994,8 @@ impl TypeInfo {
                     subst_list,
                 } => {
                     inner_types.insert(type_id);
-                    let mut decl = decl_engine
-                        .get_enum(decl_id.clone(), &name.span())
+                    let decl = decl_engine
+                        .get_enum(decl_id, &name.span())
                         .expect("unknown enum");
                     for type_param in subst_list.iter() {
                         inner_types.extend(
@@ -1018,8 +1018,8 @@ impl TypeInfo {
                     subst_list,
                 } => {
                     inner_types.insert(type_id);
-                    let mut decl = decl_engine
-                        .get_struct(decl_id.clone(), &name.span())
+                    let decl = decl_engine
+                        .get_struct(decl_id, &name.span())
                         .expect("unknown struct");
                     for type_param in subst_list.iter() {
                         inner_types.extend(
@@ -1090,7 +1090,7 @@ impl TypeInfo {
                 decl_id,
                 subst_list,
             } => {
-                let mut decl = decl_engine
+                let decl = decl_engine
                     .get_enum(decl_id.clone(), &name.span())
                     .expect("unknown enum");
                 for type_param in subst_list.iter() {
@@ -1105,7 +1105,7 @@ impl TypeInfo {
                 decl_id,
                 subst_list,
             } => {
-                let mut decl = decl_engine
+                let decl = decl_engine
                     .get_struct(decl_id.clone(), &name.span())
                     .expect("unknown struct");
                 for type_param in subst_list.iter() {
@@ -1256,8 +1256,8 @@ impl TypeInfo {
                 decl_id,
                 subst_list,
             } => {
-                let mut decl = decl_engine
-                    .get_enum(decl_id.clone(), &name.span())
+                let decl = decl_engine
+                    .get_enum(decl_id, &name.span())
                     .expect("unknown enum");
                 for type_param in subst_list.iter() {
                     all_nested_types.extend(check!(
@@ -1285,8 +1285,8 @@ impl TypeInfo {
                 decl_id,
                 subst_list,
             } => {
-                let mut decl = decl_engine
-                    .get_struct(decl_id.clone(), &name.span())
+                let decl = decl_engine
+                    .get_struct(decl_id, &name.span())
                     .expect("unknown struct");
                 for type_param in subst_list.iter() {
                     all_nested_types.extend(check!(

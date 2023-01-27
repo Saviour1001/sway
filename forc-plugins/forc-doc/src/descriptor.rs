@@ -13,12 +13,12 @@ use sway_types::Spanned;
 trait RequiredMethods {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn>;
 }
-impl RequiredMethods for Vec<sway_core::decl_engine::DeclId> {
+impl RequiredMethods for Vec<sway_core::language::ty::TyMethodValue> {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn> {
         self.iter()
-            .map(|decl_id| {
+            .map(|method_value| {
                 decl_engine
-                    .get_trait_fn(decl_id.clone(), &decl_id.span())
+                    .get_trait_fn(method_value.decl_id.clone(), &method_value.decl_id.span())
                     .expect("could not get trait fn from declaration id")
             })
             .collect()

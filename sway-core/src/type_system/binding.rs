@@ -5,7 +5,7 @@ use crate::{
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
     type_system::EnforceTypeArguments,
-    CreateTypeId, TypeInfo,
+    TypeInfo,
 };
 
 use super::{TypeArgument, TypeId};
@@ -183,9 +183,7 @@ impl TypeBinding<CallPath> {
             ty::TyDeclaration::FunctionDeclaration(original_id) => {
                 // get the copy from the declaration engine
                 let mut new_copy = check!(
-                    CompileResult::from(
-                        decl_engine.get_function(original_id.clone(), &self.span())
-                    ),
+                    CompileResult::from(decl_engine.get_function(original_id, &self.span())),
                     return err(warnings, errors),
                     warnings,
                     errors
@@ -205,9 +203,7 @@ impl TypeBinding<CallPath> {
                 );
 
                 // insert the new copy into the declaration engine
-                let new_id = decl_engine
-                    .insert(type_engine, new_copy)
-                    .with_parent(ctx.decl_engine, original_id);
+                let new_id = decl_engine.insert(type_engine, new_copy);
 
                 ty::TyDeclaration::FunctionDeclaration(new_id)
             }

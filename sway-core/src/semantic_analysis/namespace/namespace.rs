@@ -160,7 +160,7 @@ impl Namespace {
         self_type: TypeId,
         args_buf: &VecDeque<ty::TyExpression>,
         engines: Engines<'_>,
-    ) -> CompileResult<DeclId> {
+    ) -> CompileResult<ty::TyMethodValue> {
         let mut warnings = vec![];
         let mut errors = vec![];
 
@@ -217,15 +217,9 @@ impl Namespace {
         let mut methods = local_methods;
         methods.append(&mut type_methods);
 
-        for decl_id in methods.into_iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            if &method.name == method_name {
-                return ok(decl_id, warnings, errors);
+        for method_value in methods.into_iter() {
+            if &method_value.name == method_name {
+                return ok(method_value, warnings, errors);
             }
         }
 
@@ -298,7 +292,7 @@ impl Namespace {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: &[DeclId],
+        methods: Vec<ty::TyMethodValue>,
         impl_span: &Span,
         is_impl_self: bool,
         engines: Engines<'_>,
@@ -323,7 +317,7 @@ impl Namespace {
         engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
-    ) -> Vec<DeclId> {
+    ) -> Vec<ty::TyMethodValue> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
         let trait_name = trait_name.to_fullpath(self);

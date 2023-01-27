@@ -172,7 +172,7 @@ impl Items {
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclId> {
+    ) -> Vec<ty::TyMethodValue> {
         self.implemented_traits
             .get_methods_for_type(engines, type_id)
     }

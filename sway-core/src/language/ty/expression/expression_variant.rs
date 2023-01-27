@@ -21,6 +21,7 @@ pub enum TyExpressionVariant {
         contract_call_params: HashMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
         function_decl_id: DeclId,
+        function_type_subst_list: TypeSubstList,
         /// If this is `Some(val)` then `val` is the metadata. If this is `None`, then
         /// there is no selector.
         self_state_idx: Option<StateIndex>,
@@ -752,99 +753,6 @@ impl ReplaceSelfType for TyExpressionVariant {
             Reassignment(reassignment) => reassignment.replace_self_type(engines, self_type),
             StorageReassignment(..) => (),
             Return(stmt) => stmt.replace_self_type(engines, self_type),
-        }
-    }
-}
-
-impl ReplaceDecls for TyExpressionVariant {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        use TyExpressionVariant::*;
-        match self {
-            Literal(..) => (),
-            FunctionApplication {
-                ref mut function_decl_id,
-                ref mut arguments,
-                ..
-            } => {
-                function_decl_id.replace_decls(decl_mapping, engines);
-                let new_decl_id = function_decl_id
-                    .clone()
-                    .replace_decls_and_insert_new(decl_mapping, engines);
-                function_decl_id.replace_id(*new_decl_id);
-                for (_, arg) in arguments.iter_mut() {
-                    arg.replace_decls(decl_mapping, engines);
-                }
-            }
-            LazyOperator { lhs, rhs, .. } => {
-                (*lhs).replace_decls(decl_mapping, engines);
-                (*rhs).replace_decls(decl_mapping, engines);
-            }
-            VariableExpression { .. } => (),
-            Tuple { fields } => fields
-                .iter_mut()
-                .for_each(|x| x.replace_decls(decl_mapping, engines)),
-            Array { contents } => contents
-                .iter_mut()
-                .for_each(|x| x.replace_decls(decl_mapping, engines)),
-            ArrayIndex { prefix, index } => {
-                (*prefix).replace_decls(decl_mapping, engines);
-                (*index).replace_decls(decl_mapping, engines);
-            }
-            StructExpression { fields, .. } => fields
-                .iter_mut()
-                .for_each(|x| x.replace_decls(decl_mapping, engines)),
-            CodeBlock(block) => {
-                block.replace_decls(decl_mapping, engines);
-            }
-            FunctionParameter => (),
-            IfExp {
-                condition,
-                then,
-                r#else,
-            } => {
-                condition.replace_decls(decl_mapping, engines);
-                then.replace_decls(decl_mapping, engines);
-                if let Some(ref mut r#else) = r#else {
-                    r#else.replace_decls(decl_mapping, engines);
-                }
-            }
-            AsmExpression { .. } => {}
-            StructFieldAccess { prefix, .. } => {
-                prefix.replace_decls(decl_mapping, engines);
-            }
-            TupleElemAccess { prefix, .. } => {
-                prefix.replace_decls(decl_mapping, engines);
-            }
-            EnumInstantiation { .. } => {
-                todo!();
-                // TODO: replace enum decl
-                //enum_decl.replace_decls(decl_mapping);
-                // if let Some(ref mut contents) = contents {
-                //     contents.replace_decls(decl_mapping, engines);
-                // };
-            }
-            AbiCast { address, .. } => address.replace_decls(decl_mapping, engines),
-            StorageAccess { .. } => (),
-            IntrinsicFunction(_) => {}
-            EnumTag { exp } => {
-                exp.replace_decls(decl_mapping, engines);
-            }
-            UnsafeDowncast { exp, .. } => {
-                exp.replace_decls(decl_mapping, engines);
-            }
-            AbiName(_) => (),
-            WhileLoop {
-                ref mut condition,
-                ref mut body,
-            } => {
-                condition.replace_decls(decl_mapping, engines);
-                body.replace_decls(decl_mapping, engines);
-            }
-            Break => (),
-            Continue => (),
-            Reassignment(reassignment) => reassignment.replace_decls(decl_mapping, engines),
-            StorageReassignment(..) => (),
-            Return(stmt) => stmt.replace_decls(decl_mapping, engines),
         }
     }
 }

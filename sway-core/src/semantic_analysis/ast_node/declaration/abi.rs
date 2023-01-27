@@ -5,7 +5,7 @@ use crate::{
     error::*,
     language::{parsed::*, ty},
     semantic_analysis::{Mode, TypeCheckContext},
-    CompileResult,
+    CompileResult, TypeSubstList,
 };
 
 impl ty::TyAbiDeclaration {
@@ -53,7 +53,11 @@ impl ty::TyAbiDeclaration {
                     })
                 }
             }
-            new_interface_surface.push(decl_engine.insert(type_engine, method));
+            new_interface_surface.push(ty::TyMethodValue::new(
+                method.name.clone(),
+                decl_engine.insert(type_engine, method),
+                TypeSubstList::new(),
+            ));
         }
 
         // Type check the methods.
@@ -73,7 +77,11 @@ impl ty::TyAbiDeclaration {
                     })
                 }
             }
-            new_methods.push(decl_engine.insert(type_engine, method));
+            new_methods.push(ty::TyMethodValue::new(
+                method.name.clone(),
+                decl_engine.insert(type_engine, method),
+                TypeSubstList::new(),
+            ));
         }
 
         let abi_decl = ty::TyAbiDeclaration {

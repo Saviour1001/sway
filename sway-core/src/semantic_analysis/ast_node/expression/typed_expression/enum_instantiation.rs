@@ -17,8 +17,8 @@ pub(crate) fn instantiate_enum(
     enum_decl_id: DeclId,
     enum_type_subst_list: TypeSubstList,
     enum_decl: ty::TyEnumDeclaration,
-    enum_name: Ident,
-    enum_variant_name: Ident,
+    enum_name_at_instantiation: Ident,
+    enum_variant_name_at_instantiation: Ident,
     args_opt: Option<Vec<Expression>>,
     mut type_binding: TypeBinding<()>,
     span: &Span,
@@ -32,7 +32,7 @@ pub(crate) fn instantiate_enum(
 
     let enum_variant = check!(
         enum_decl
-            .expect_variant_from_name(&enum_variant_name)
+            .expect_variant_from_name(&enum_variant_name_at_instantiation)
             .cloned(),
         return err(warnings, errors),
         warnings,
@@ -42,7 +42,7 @@ pub(crate) fn instantiate_enum(
     let enum_type_id = type_engine.insert(
         decl_engine,
         TypeInfo::Enum {
-            name: enum_name.clone(),
+            name: enum_name_at_instantiation.clone(),
             decl_id: enum_decl_id,
             subst_list: enum_type_subst_list,
         },
@@ -52,7 +52,7 @@ pub(crate) fn instantiate_enum(
     // args_opt.is_some() returns true when this variant was called with parenthesis.
     if type_engine.get(enum_variant.initial_type_id).is_unit() && args_opt.is_some() {
         errors.push(CompileError::UnitVariantWithParenthesesEnumInstantiator {
-            span: enum_variant_name.span(),
+            span: enum_variant_name_at_instantiation.span(),
             ty: enum_variant.name.as_str().to_string(),
         });
         return err(warnings, errors);
@@ -81,11 +81,11 @@ pub(crate) fn instantiate_enum(
                     tag: enum_variant.tag,
                     contents: None,
                     variant_name: enum_variant.name,
-                    enum_instantiation_span: enum_name.span(),
-                    variant_instantiation_span: enum_variant_name.span(),
+                    enum_instantiation_span: enum_name_at_instantiation.span(),
+                    variant_instantiation_span: enum_variant_name_at_instantiation.span(),
                     type_binding,
                 },
-                span: enum_variant_name.span(),
+                span: enum_variant_name_at_instantiation.span(),
             },
             warnings,
             errors,
@@ -127,11 +127,11 @@ pub(crate) fn instantiate_enum(
                         tag: enum_variant.tag,
                         contents: Some(Box::new(typed_expr)),
                         variant_name: enum_variant.name,
-                        enum_instantiation_span: enum_name.span(),
-                        variant_instantiation_span: enum_variant_name.span(),
+                        enum_instantiation_span: enum_name_at_instantiation.span(),
+                        variant_instantiation_span: enum_variant_name_at_instantiation.span(),
                         type_binding,
                     },
-                    span: enum_variant_name.span(),
+                    span: enum_variant_name_at_instantiation.span(),
                 },
                 warnings,
                 errors,
@@ -139,19 +139,19 @@ pub(crate) fn instantiate_enum(
         }
         ([], _) => {
             errors.push(CompileError::MissingEnumInstantiator {
-                span: enum_variant_name.span(),
+                span: enum_variant_name_at_instantiation.span(),
             });
             err(warnings, errors)
         }
         (_too_many_expressions, ty) if ty.is_unit() => {
             errors.push(CompileError::UnnecessaryEnumInstantiator {
-                span: enum_variant_name.span(),
+                span: enum_variant_name_at_instantiation.span(),
             });
             err(warnings, errors)
         }
         (_too_many_expressions, ty) => {
             errors.push(CompileError::MoreThanOneEnumInstantiator {
-                span: enum_variant_name.span(),
+                span: enum_variant_name_at_instantiation.span(),
                 ty: engines.help_out(ty).to_string(),
             });
             err(warnings, errors)

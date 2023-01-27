@@ -4,12 +4,10 @@ use sway_error::error::CompileError;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclId,
     engine_threading::*,
     error::*,
-    language::CallPath,
-    type_system::{SubstTypes, TypeId},
-    ReplaceSelfType, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap,
+    language::{ty, CallPath},
+    type_system::*,
 };
 
 #[derive(Clone, Debug)]
@@ -62,8 +60,8 @@ impl OrdWithEngines for TraitKey {
     }
 }
 
-/// Map of function name to [TyFunctionDeclaration](ty::TyFunctionDeclaration)
-type TraitMethods = im::HashMap<String, DeclId>;
+/// Map of function name to [TyMethodValue](ty::TyMethodValue).
+type TraitMethods = im::HashMap<String, ty::TyMethodValue>;
 
 #[derive(Clone, Debug)]
 struct TraitEntry {
@@ -98,7 +96,7 @@ impl TraitMap {
         trait_name: CallPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
-        methods: &[DeclId],
+        methods: Vec<ty::TyMethodValue>,
         impl_span: &Span,
         is_impl_self: bool,
         engines: Engines<'_>,
@@ -110,14 +108,8 @@ impl TraitMap {
         let decl_engine = engines.de();
 
         let mut trait_methods: TraitMethods = im::HashMap::new();
-        for decl_id in methods.iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), impl_span)),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            trait_methods.insert(method.name.to_string(), decl_id.clone());
+        for method_value in methods.into_iter() {
+            trait_methods.insert(method_value.name.clone().to_string(), method_value);
         }
 
         // check to see if adding this trait will produce a conflicting definition
@@ -191,20 +183,12 @@ impl TraitMap {
                     second_impl_span: impl_span.clone(),
                 });
             } else if types_are_subset {
-                for (name, decl_id) in trait_methods.iter() {
+                for (name, method_value) in trait_methods.iter() {
                     if map_trait_methods.get(name).is_some() {
-                        let method = check!(
-                            CompileResult::from(
-                                decl_engine.get_function(decl_id.clone(), impl_span)
-                            ),
-                            return err(warnings, errors),
-                            warnings,
-                            errors
-                        );
                         errors.push(CompileError::DuplicateMethodsDefinedForType {
-                            func_name: method.name.to_string(),
+                            func_name: method_value.name.clone().to_string(),
                             type_implementing_for: engines.help_out(type_id).to_string(),
-                            span: method.name.span(),
+                            span: method_value.name.clone().span(),
                         });
                     }
                 }
@@ -592,21 +576,13 @@ impl TraitMap {
                         TypeSubstMap::from_superset_and_subset(type_engine, *map_type_id, *type_id);
                     let new_self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
                     type_id.replace_self_type(engines, new_self_type);
-                    let trait_methods: TraitMethods = map_trait_methods
-                        .clone()
-                        .into_iter()
-                        .map(|(name, decl_id)| {
-                            let mut decl = decl_engine.get(decl_id.clone());
-                            decl.subst(&type_mapping, engines);
-                            decl.replace_self_type(engines, new_self_type);
-                            (
-                                name,
-                                decl_engine
-                                    .insert_wrapper(type_engine, decl, decl_id.span())
-                                    .with_parent(decl_engine, decl_id),
-                            )
-                        })
-                        .collect();
+                    let mut trait_methods = map_trait_methods.clone();
+                    trait_methods.iter_mut().for_each(|(_, mut method_value)| {
+                        method_value.type_subst_list.subst(&type_mapping, engines);
+                        method_value
+                            .type_subst_list
+                            .replace_self_type(engines, new_self_type);
+                    });
                     trait_map.insert_inner(
                         map_trait_name.clone(),
                         *type_id,
@@ -632,7 +608,7 @@ impl TraitMap {
         &self,
         engines: Engines<'_>,
         type_id: TypeId,
-    ) -> Vec<DeclId> {
+    ) -> Vec<ty::TyMethodValue> {
         let type_engine = engines.te();
         let mut methods = vec![];
         // small performance gain in bad case
@@ -671,7 +647,7 @@ impl TraitMap {
         engines: Engines<'_>,
         type_id: TypeId,
         trait_name: &CallPath,
-    ) -> Vec<DeclId> {
+    ) -> Vec<ty::TyMethodValue> {
         let type_engine = engines.te();
         let mut methods = vec![];
         // small performance gain in bad case

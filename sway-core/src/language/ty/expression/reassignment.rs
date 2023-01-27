@@ -50,12 +50,6 @@ impl ReplaceSelfType for TyReassignment {
     }
 }
 
-impl ReplaceDecls for TyReassignment {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        self.rhs.replace_decls(decl_mapping, engines);
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum ProjectionKind {
     StructField {

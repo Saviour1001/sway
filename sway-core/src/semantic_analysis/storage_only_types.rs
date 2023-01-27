@@ -241,8 +241,8 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 warnings,
                 errors
             );
-            for method_id in methods {
-                match decl_engine.get_function(method_id, &span) {
+            for method_value in methods {
+                match decl_engine.get_function(method_value.decl_id.clone(), &span) {
                     Ok(method) => {
                         check!(
                             validate_decls_for_storage_only_types_in_codeblock(
@@ -253,17 +253,14 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                             warnings,
                             errors
                         );
-                        check!(
-                            check_type(
-                                engines,
-                                method.return_type,
-                                method.return_type_span.clone(),
-                                false
-                            ),
-                            (),
-                            warnings,
-                            errors
-                        )
+                        for ty in method_value.type_subst_list.iter() {
+                            check!(
+                                check_type(engines, ty.type_id, ty.span(), false),
+                                (),
+                                warnings,
+                                errors
+                            )
+                        }
                     }
                     Err(err) => errors.push(err),
                 };

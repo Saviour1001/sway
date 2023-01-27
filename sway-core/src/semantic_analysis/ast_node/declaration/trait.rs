@@ -4,14 +4,13 @@ use sway_error::warning::{CompileWarning, Warning};
 use sway_types::{style::is_upper_camel_case, Ident, Spanned};
 
 use crate::{
-    decl_engine::*,
     error::*,
     language::{parsed::*, ty, CallPath},
     semantic_analysis::{declaration::insert_supertraits_into_namespace, Mode, TypeCheckContext},
     type_system::*,
 };
 
-type MethodMap = BTreeMap<Ident, DeclId>;
+type MethodMap = BTreeMap<Ident, ty::TyMethodValue>;
 
 impl ty::TyTraitDeclaration {
     pub(crate) fn type_check(
@@ -76,13 +75,16 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            let decl_id = decl_engine.insert(type_engine, method.clone());
-            new_interface_surface.push(decl_id.clone());
-            dummy_interface_surface.push(
-                decl_engine
-                    .insert(type_engine, method.to_dummy_func(Mode::NonAbi))
-                    .with_parent(decl_engine, decl_id),
-            );
+            new_interface_surface.push(ty::TyMethodValue::new(
+                method.name.clone(),
+                decl_engine.insert(type_engine, method.clone()),
+                todo!(),
+            ));
+            dummy_interface_surface.push(ty::TyMethodValue::new(
+                method.name.clone(),
+                decl_engine.insert(type_engine, method.to_dummy_func(Mode::NonAbi)),
+                todo!(),
+            ));
         }
 
         // insert placeholder functions representing the interface surface
@@ -96,7 +98,7 @@ impl ty::TyTraitDeclaration {
                 },
                 new_type_parameters.iter().map(|x| x.into()).collect(),
                 self_type,
-                &dummy_interface_surface,
+                dummy_interface_surface,
                 &span,
                 false,
                 engines,
@@ -115,7 +117,11 @@ impl ty::TyTraitDeclaration {
                 warnings,
                 errors
             );
-            new_methods.push(decl_engine.insert(type_engine, method));
+            new_methods.push(ty::TyMethodValue::new(
+                method.name.clone(),
+                decl_engine.insert(type_engine, method),
+                todo!(),
+            ));
         }
 
         let typed_trait_decl = ty::TyTraitDeclaration {
@@ -141,8 +147,8 @@ impl ty::TyTraitDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut interface_surface_method_ids: MethodMap = BTreeMap::new();
-        let mut impld_method_ids: MethodMap = BTreeMap::new();
+        let mut interface_surface_methods: MethodMap = BTreeMap::new();
+        let mut impld_methods: MethodMap = BTreeMap::new();
 
         let ty::TyTraitDeclaration {
             interface_surface,
@@ -154,36 +160,20 @@ impl ty::TyTraitDeclaration {
         let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
-        for decl_id in interface_surface.iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_trait_fn(decl_id.clone(), &call_path.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            interface_surface_method_ids.insert(method.name, decl_id.clone());
+        for method_value in interface_surface.iter() {
+            interface_surface_methods.insert(method_value.name.clone(), method_value.clone());
         }
 
         // Retrieve the implemented methods for this type.
-        for decl_id in ctx
+        for method_value in ctx
             .namespace
             .get_methods_for_type_and_trait_name(engines, type_id, call_path)
             .into_iter()
         {
-            let method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &name.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            impld_method_ids.insert(method.name, decl_id);
+            impld_methods.insert(method_value.name.clone(), method_value);
         }
 
-        ok(
-            (interface_surface_method_ids, impld_method_ids),
-            warnings,
-            errors,
-        )
+        ok((interface_surface_methods, impld_methods), warnings, errors)
     }
 
     /// Retrieves the interface surface, methods, and implemented methods for
@@ -198,9 +188,9 @@ impl ty::TyTraitDeclaration {
         let mut warnings = vec![];
         let mut errors = vec![];
 
-        let mut interface_surface_method_ids: MethodMap = BTreeMap::new();
-        let mut method_ids: MethodMap = BTreeMap::new();
-        let mut impld_method_ids: MethodMap = BTreeMap::new();
+        let mut interface_surface_methods: MethodMap = BTreeMap::new();
+        let mut the_methods: MethodMap = BTreeMap::new();
+        let mut impld_methods: MethodMap = BTreeMap::new();
 
         let ty::TyTraitDeclaration {
             interface_surface,
@@ -214,25 +204,13 @@ impl ty::TyTraitDeclaration {
         let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
-        for decl_id in interface_surface.iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_trait_fn(decl_id.clone(), &call_path.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            interface_surface_method_ids.insert(method.name, decl_id.clone());
+        for method_value in interface_surface.iter() {
+            interface_surface_methods.insert(method_value.name.clone(), method_value.clone());
         }
 
         // Retrieve the trait methods for this trait.
-        for decl_id in methods.iter() {
-            let method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &call_path.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            method_ids.insert(method.name, decl_id.clone());
+        for method_value in methods.iter() {
+            the_methods.insert(method_value.name.clone(), method_value.clone());
         }
 
         // Retrieve the implemented methods for this type.
@@ -246,28 +224,17 @@ impl ty::TyTraitDeclaration {
                 .map(|type_arg| type_arg.type_id)
                 .collect(),
         );
-        for decl_id in ctx
+        for mut method_value in ctx
             .namespace
             .get_methods_for_type_and_trait_name(engines, type_id, call_path)
             .into_iter()
         {
-            let mut method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &call_path.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            method.subst(&type_mapping, engines);
-            impld_method_ids.insert(
-                method.name.clone(),
-                decl_engine
-                    .insert(type_engine, method)
-                    .with_parent(decl_engine, decl_id),
-            );
+            method_value.type_subst_list.subst(&type_mapping, engines);
+            impld_methods.insert(method_value.name.clone(), method_value);
         }
 
         ok(
-            (interface_surface_method_ids, method_ids, impld_method_ids),
+            (interface_surface_methods, the_methods, impld_methods),
             warnings,
             errors,
         )
@@ -299,46 +266,30 @@ impl ty::TyTraitDeclaration {
         // Retrieve the trait methods for this trait. Transform them into the
         // correct typing for this impl block by using the type parameters from
         // the original trait declaration and the given type arguments.
-        let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-            type_parameters
-                .iter()
-                .map(|type_param| type_param.type_id)
-                .collect(),
-            type_arguments
-                .iter()
-                .map(|type_arg| type_arg.type_id)
-                .collect(),
-        );
-        for decl_id in interface_surface.iter() {
-            let mut method = check!(
-                CompileResult::from(decl_engine.get_trait_fn(decl_id.clone(), &trait_name.span())),
-                continue,
-                warnings,
-                errors
-            );
-            method.replace_self_type(engines, type_id);
-            method.subst(&type_mapping, engines);
-            all_methods.push(
-                ctx.decl_engine
-                    .insert(type_engine, method.to_dummy_func(Mode::NonAbi))
-                    .with_parent(ctx.decl_engine, decl_id.clone()),
-            );
-        }
-        for decl_id in methods.iter() {
-            let mut method = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &trait_name.span())),
-                continue,
-                warnings,
-                errors
-            );
-            method.replace_self_type(engines, type_id);
-            method.subst(&type_mapping, engines);
-            all_methods.push(
-                ctx.decl_engine
-                    .insert(type_engine, method)
-                    .with_parent(ctx.decl_engine, decl_id.clone()),
-            );
-        }
+        // let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
+        //     type_parameters
+        //         .iter()
+        //         .map(|type_param| type_param.type_id)
+        //         .collect(),
+        //     type_arguments
+        //         .iter()
+        //         .map(|type_arg| type_arg.type_id)
+        //         .collect(),
+        // );
+        // for mut method_value in interface_surface.iter() {
+        //     method_value
+        //         .type_subst_list
+        //         .replace_self_type(engines, type_id);
+        //     method_value.type_subst_list.subst(&type_mapping, engines);
+        //     all_methods.push(method_value.clone());
+        // }
+        // for mut method_value in methods.iter() {
+        //     method_value
+        //         .type_subst_list
+        //         .replace_self_type(engines, type_id);
+        //     method_value.type_subst_list.subst(&type_mapping, engines);
+        //     all_methods.push(method_value.clone());
+        // }
 
         // Insert the methods of the trait into the namespace.
         // Specifically do not check for conflicting definitions because
@@ -348,7 +299,7 @@ impl ty::TyTraitDeclaration {
             trait_name.clone(),
             type_arguments.to_vec(),
             type_id,
-            &all_methods,
+            all_methods,
             &trait_name.span(),
             false,
             engines,

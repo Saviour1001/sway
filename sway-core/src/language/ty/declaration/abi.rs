@@ -1,6 +1,6 @@
 use sway_types::{Ident, Span};
 
-use crate::{decl_engine::DeclId, engine_threading::*, transform, type_system::*};
+use crate::{engine_threading::*, language::ty::*, transform, type_system::*};
 
 /// A [TyAbiDeclaration] contains the type-checked version of the parse tree's `AbiDeclaration`.
 #[derive(Clone, Debug)]
@@ -8,8 +8,8 @@ pub struct TyAbiDeclaration {
     /// The name of the abi trait (also known as a "contract trait")
     pub name: Ident,
     /// The methods a contract is required to implement in order opt in to this interface
-    pub interface_surface: Vec<DeclId>,
-    pub methods: Vec<DeclId>,
+    pub interface_surface: Vec<TyMethodValue>,
+    pub methods: Vec<TyMethodValue>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
 }
@@ -18,8 +18,8 @@ impl EqWithEngines for TyAbiDeclaration {}
 impl PartialEqWithEngines for TyAbiDeclaration {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
         self.name == other.name
-        && self.interface_surface == other.interface_surface
-        && self.methods == other.methods
+        && self.interface_surface.eq(&other.interface_surface, type_engine)
+        && self.methods.eq(&other.methods, type_engine)
         // span ignored
         && self.attributes == other.attributes
     }

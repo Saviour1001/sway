@@ -98,10 +98,11 @@ impl<'a> TypedTree<'a> {
                         token.type_def = Some(TypeDefinition::Ident(trait_decl.name.clone()));
                     }
 
-                    for trait_fn_decl_id in &trait_decl.interface_surface {
-                        if let Ok(trait_fn) = decl_engine
-                            .get_trait_fn(trait_fn_decl_id.clone(), &trait_fn_decl_id.span())
-                        {
+                    for method_value in &trait_decl.interface_surface {
+                        if let Ok(trait_fn) = decl_engine.get_trait_fn(
+                            method_value.decl_id.clone(),
+                            &method_value.decl_id.span(),
+                        ) {
                             self.collect_typed_trait_fn_token(&trait_fn);
                         }
                     }
@@ -214,9 +215,9 @@ impl<'a> TypedTree<'a> {
                         );
                     }
 
-                    for method_id in methods {
+                    for method_value in methods {
                         if let Ok(method) =
-                            decl_engine.get_function(method_id.clone(), &decl_id.span())
+                            decl_engine.get_function(method_value.decl_id.clone(), &decl_id.span())
                         {
                             self.collect_typed_fn_decl(&method);
                         }
@@ -240,10 +241,11 @@ impl<'a> TypedTree<'a> {
                         token.type_def = Some(TypeDefinition::Ident(abi_decl.name.clone()));
                     }
 
-                    for trait_fn_decl_id in &abi_decl.interface_surface {
-                        if let Ok(trait_fn) = decl_engine
-                            .get_trait_fn(trait_fn_decl_id.clone(), &trait_fn_decl_id.span())
-                        {
+                    for method_value in &abi_decl.interface_surface {
+                        if let Ok(trait_fn) = decl_engine.get_trait_fn(
+                            method_value.decl_id.clone(),
+                            &method_value.decl_id.span(),
+                        ) {
                             self.collect_typed_trait_fn_token(&trait_fn);
                         }
                     }

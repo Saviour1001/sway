@@ -128,7 +128,7 @@ fn impl_trait_methods<'a>(
         Ok(impl_trait) => impl_trait
             .methods
             .iter()
-            .flat_map(|fn_decl| decl_id_to_fn_decls(decl_engine, fn_decl, span))
+            .flat_map(|method_value| decl_id_to_fn_decls(decl_engine, &method_value.decl_id, span))
             .collect(),
         Err(_) => vec![],
     }

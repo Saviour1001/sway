@@ -5,8 +5,6 @@ use sway_types::{Span, Spanned};
 
 use crate::{engine_threading::*, language::ty, type_system::*};
 
-use super::{DeclMapping, ReplaceDecls, ReplaceFunctionImplementingType};
-
 /// The [DeclEngine] type is used in the [DeclarationEngine] as a means of
 /// placing all declaration types into the same type.
 #[derive(Clone, Debug)]
@@ -132,35 +130,6 @@ impl ReplaceSelfType for DeclWrapper {
             DeclWrapper::Abi(_) => {}
             DeclWrapper::Constant(_) => {}
             DeclWrapper::Enum(decl) => decl.replace_self_type(engines, self_type),
-        }
-    }
-}
-
-impl ReplaceDecls for DeclWrapper {
-    fn replace_decls_inner(&mut self, decl_mapping: &DeclMapping, engines: Engines<'_>) {
-        if let DeclWrapper::Function(decl) = self {
-            decl.replace_decls(decl_mapping, engines);
-        }
-    }
-}
-
-impl ReplaceFunctionImplementingType for DeclWrapper {
-    fn replace_implementing_type(
-        &mut self,
-        _engines: Engines<'_>,
-        implementing_type: ty::TyDeclaration,
-    ) {
-        match self {
-            DeclWrapper::Function(decl) => decl.set_implementing_type(implementing_type),
-            DeclWrapper::Unknown
-            | DeclWrapper::Trait(_)
-            | DeclWrapper::TraitFn(_)
-            | DeclWrapper::ImplTrait(_)
-            | DeclWrapper::Struct(_)
-            | DeclWrapper::Storage(_)
-            | DeclWrapper::Abi(_)
-            | DeclWrapper::Constant(_)
-            | DeclWrapper::Enum(_) => {}
         }
     }
 }

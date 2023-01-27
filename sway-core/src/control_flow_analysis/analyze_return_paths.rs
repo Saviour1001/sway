@@ -3,7 +3,6 @@
 
 use crate::{
     control_flow_analysis::*,
-    decl_engine::DeclId,
     language::{ty, CallPath},
     type_system::*,
     Engines,
@@ -231,20 +230,20 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: Engines<'eng>,
     trait_name: &CallPath,
     graph: &mut ControlFlowGraph<'cfg>,
-    methods: &[DeclId],
+    methods: &[ty::TyMethodValue],
     entry_node: NodeIndex,
 ) -> Result<(), CompileError> {
     let decl_engine = engines.de();
     let mut methods_and_indexes = vec![];
     // insert method declarations into the graph
-    for method_decl_id in methods {
-        let fn_decl = decl_engine.get_function(method_decl_id.clone(), &trait_name.span())?;
+    for method_value in methods {
+        let fn_decl = decl_engine.get_function(method_value.decl_id.clone(), &trait_name.span())?;
         let fn_decl_entry_node = graph.add_node(
             engines,
             ControlFlowGraphNode::MethodDeclaration {
                 span: fn_decl.span.clone(),
                 method_name: fn_decl.name.clone(),
-                method_decl_id: method_decl_id.clone(),
+                method_decl_id: method_value.decl_id.clone(),
                 engines,
             },
         );

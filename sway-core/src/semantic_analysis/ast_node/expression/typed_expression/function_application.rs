@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::ReplaceDecls,
+    decl_engine::DeclId,
     error::*,
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
@@ -11,7 +11,9 @@ use sway_types::Spanned;
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
-    mut function_decl: ty::TyFunctionDeclaration,
+    function_decl_id: DeclId,
+    function_type_subst_list: TypeSubstList,
+    function_decl: ty::TyFunctionDeclaration,
     call_path_binding: TypeBinding<CallPath>,
     arguments: Option<Vec<Expression>>,
     span: Span,
@@ -72,34 +74,18 @@ pub(crate) fn instantiate_function_application(
     ctx.namespace
         .insert_trait_implementation_for_type(engines, function_decl.return_type);
 
-    // Handle the trait constraints. This includes checking to see if the trait
-    // constraints are satisfied and replacing old decl ids based on the
-    // constraint with new decl ids based on the new type.
-    let decl_mapping = check!(
-        TypeParameter::gather_decl_mapping_from_trait_constraints(
-            ctx.by_ref(),
-            &function_decl.type_parameters,
-            &call_path_binding.span()
-        ),
-        return err(warnings, errors),
-        warnings,
-        errors
-    );
-    function_decl.replace_decls(&decl_mapping, engines);
-    let return_type = function_decl.return_type;
-    let new_decl_id = decl_engine.insert(type_engine, function_decl);
-
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path: call_path_binding.inner.clone(),
             contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
-            function_decl_id: new_decl_id,
+            function_decl_id,
+            function_type_subst_list,
             self_state_idx: None,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
         },
-        return_type,
+        return_type: function_decl.return_type,
         span,
     };
 
