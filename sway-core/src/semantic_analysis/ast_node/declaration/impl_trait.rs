@@ -370,7 +370,7 @@ impl ty::TyImplTrait {
                 }
                 // We're already inside a type's impl. So we can't have these
                 // nested functions etc. We just ignore them.
-                ty::TyDeclaration::FunctionDeclaration(_)
+                ty::TyDeclaration::FunctionDeclaration(_, _)
                 | ty::TyDeclaration::TraitDeclaration(_)
                 | ty::TyDeclaration::StructDeclaration(_, _)
                 | ty::TyDeclaration::EnumDeclaration(_, _)

@@ -260,7 +260,7 @@ fn compile_declarations(
                 )?;
             }
 
-            ty::TyDeclaration::FunctionDeclaration(_decl) => {
+            ty::TyDeclaration::FunctionDeclaration(_, _) => {
                 // We no longer compile functions other than `main()` until we can improve the name
                 // resolution.  Currently there isn't enough information in the AST to fully
                 // distinguish similarly named functions and especially trait methods.

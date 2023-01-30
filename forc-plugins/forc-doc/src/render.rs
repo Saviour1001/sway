@@ -83,12 +83,14 @@ impl RenderedDocumentation {
                                 }
                             }
                         }
-                        FunctionDeclaration(_) => match doc_links.get_mut(&BlockTitle::Functions) {
-                            Some(links) => links.push(doc.link()),
-                            None => {
-                                doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
+                        FunctionDeclaration(_, _) => {
+                            match doc_links.get_mut(&BlockTitle::Functions) {
+                                Some(links) => links.push(doc.link()),
+                                None => {
+                                    doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
+                                }
                             }
-                        },
+                        }
                         ConstantDeclaration(_) => match doc_links.get_mut(&BlockTitle::Constants) {
                             Some(links) => links.push(doc.link()),
                             None => {
@@ -116,7 +118,7 @@ impl RenderedDocumentation {
                         StorageDeclaration(_) => {
                             doc_links.insert(BlockTitle::ContractStorage, vec![doc.link()]);
                         }
-                        FunctionDeclaration(_) => {
+                        FunctionDeclaration(_, _) => {
                             doc_links.insert(BlockTitle::Functions, vec![doc.link()]);
                         }
                         ConstantDeclaration(_) => {
@@ -188,7 +190,7 @@ impl RenderedDocumentation {
                             .insert(BlockTitle::ContractStorage, vec![doc.link()]);
                     }
                 },
-                FunctionDeclaration(_) => match all_docs.links.get_mut(&BlockTitle::Functions) {
+                FunctionDeclaration(_, _) => match all_docs.links.get_mut(&BlockTitle::Functions) {
                     Some(links) => links.push(doc.link()),
                     None => {
                         all_docs

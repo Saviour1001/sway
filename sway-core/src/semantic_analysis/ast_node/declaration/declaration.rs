@@ -185,6 +185,7 @@ impl ty::TyDeclaration {
                 let name = fn_decl.name.clone();
                 let decl = ty::TyDeclaration::FunctionDeclaration(
                     decl_engine.insert(type_engine, fn_decl),
+                    fn_subst_list,
                 );
                 ctx.namespace.insert_symbol(name, decl.clone());
                 decl

@@ -75,7 +75,7 @@ pub(crate) fn print_decl_engine_types(
                         .unwrap();
                     format!("{const_decl:#?}")
                 }
-                ty::TyDeclaration::FunctionDeclaration(decl_id) => {
+                ty::TyDeclaration::FunctionDeclaration(decl_id, _) => {
                     let func_decl = decl_engine
                         .get_function(decl_id.clone(), &decl_id.span())
                         .unwrap();

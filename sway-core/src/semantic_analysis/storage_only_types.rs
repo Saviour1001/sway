@@ -197,40 +197,40 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
             );
             check!(expr_validate(engines, &expr), (), warnings, errors)
         }
-        ty::TyDeclaration::FunctionDeclaration(decl_id) => {
-            let ty::TyFunctionDeclaration {
-                body,
-                parameters,
-                return_type,
-                return_type_span,
-                ..
-            } = check!(
-                CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl.span())),
-                return err(warnings, errors),
-                warnings,
-                errors
-            );
-            check!(
-                validate_decls_for_storage_only_types_in_codeblock(engines, &body),
-                (),
-                warnings,
-                errors
-            );
-            for param in parameters {
-                check!(
-                    check_type(engines, param.type_id, param.type_span.clone(), false),
-                    continue,
-                    warnings,
-                    errors
-                );
-            }
-            check!(
-                check_type(engines, return_type, return_type_span, false),
-                (),
-                warnings,
-                errors
-            );
-        }
+        // ty::TyDeclaration::FunctionDeclaration(decl_id) => {
+        //     let ty::TyFunctionDeclaration {
+        //         body,
+        //         parameters,
+        //         return_type,
+        //         return_type_span,
+        //         ..
+        //     } = check!(
+        //         CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl.span())),
+        //         return err(warnings, errors),
+        //         warnings,
+        //         errors
+        //     );
+        //     check!(
+        //         validate_decls_for_storage_only_types_in_codeblock(engines, &body),
+        //         (),
+        //         warnings,
+        //         errors
+        //     );
+        //     for param in parameters {
+        //         check!(
+        //             check_type(engines, param.type_id, param.type_span.clone(), false),
+        //             continue,
+        //             warnings,
+        //             errors
+        //         );
+        //     }
+        //     check!(
+        //         check_type(engines, return_type, return_type_span, false),
+        //         (),
+        //         warnings,
+        //         errors
+        //     );
+        // }
         ty::TyDeclaration::AbiDeclaration(_) | ty::TyDeclaration::TraitDeclaration(_) => {
             // These methods are not typed. They are however handled from ImplTrait.
         }
@@ -266,7 +266,9 @@ fn decl_validate(engines: Engines<'_>, decl: &ty::TyDeclaration) -> CompileResul
                 };
             }
         }
-        ty::TyDeclaration::StructDeclaration(_, _) | ty::TyDeclaration::EnumDeclaration(_, _) => {
+        ty::TyDeclaration::FunctionDeclaration(_, _)
+        | ty::TyDeclaration::StructDeclaration(_, _)
+        | ty::TyDeclaration::EnumDeclaration(_, _) => {
             todo!()
         }
         // ty::TyDeclaration::StructDeclaration(decl_id) => {

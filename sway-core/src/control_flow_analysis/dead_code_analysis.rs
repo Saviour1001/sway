@@ -35,7 +35,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                 if let ControlFlowGraphNode::ProgramNode(ty::TyAstNode {
                     span: function_span,
                     content:
-                        ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(_)),
+                        ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(_, _)),
                 }) = &self.graph[*x]
                 {
                     function_span.end() >= span.end() && function_span.start() <= span.start()
@@ -173,6 +173,7 @@ fn entry_points(
                         content:
                             ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
                                 decl_id,
+                                _,
                             )),
                         ..
                     }) => {
@@ -194,6 +195,7 @@ fn entry_points(
                         content:
                             ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(
                                 decl_id,
+                                _,
                             )),
                         ..
                     }) => {
@@ -391,7 +393,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 options,
             )
         }
-        FunctionDeclaration(decl_id) => {
+        FunctionDeclaration(decl_id, _) => {
             let fn_decl = decl_engine.get_function(decl_id.clone(), &decl.span())?;
             connect_typed_fn_decl(
                 engines, &fn_decl, graph, entry_node, span, exit_node, tree_type, options,
@@ -1632,7 +1634,7 @@ fn construct_dead_code_warning_from_node(
         // code.
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)),
+                ty::TyAstNodeContent::Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id, _)),
             span,
         } => {
             let warning_span = match decl_engine.get_function(decl_id.clone(), span) {
@@ -1662,20 +1664,16 @@ fn construct_dead_code_warning_from_node(
             content:
                 ty::TyAstNodeContent::Declaration(ty::TyDeclaration::EnumDeclaration(decl_id, _)),
             span,
-        } => todo!(),
-        // ty::TyAstNode {
-        //     content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::EnumDeclaration(decl_id)),
-        //     span,
-        // } => {
-        //     let warning_span = match decl_engine.get_enum(decl_id.clone(), span) {
-        //         Ok(ty::TyEnumDeclaration { name, .. }) => name.span(),
-        //         Err(_) => span.clone(),
-        //     };
-        //     CompileWarning {
-        //         span: warning_span,
-        //         warning_content: Warning::DeadEnumDeclaration,
-        //     }
-        // }
+        } => {
+            let warning_span = match decl_engine.get_enum(decl_id.clone(), span) {
+                Ok(ty::TyEnumDeclaration { name, .. }) => name.span(),
+                Err(_) => span.clone(),
+            };
+            CompileWarning {
+                span: warning_span,
+                warning_content: Warning::DeadEnumDeclaration,
+            }
+        }
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDeclaration::TraitDeclaration(decl_id)),
             span,

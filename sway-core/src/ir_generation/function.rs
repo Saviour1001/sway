@@ -146,7 +146,7 @@ impl<'eng> FnCompiler<'eng> {
                     self.compile_const_decl(context, md_mgr, tcd, span_md_idx)?;
                     Ok(None)
                 }
-                ty::TyDeclaration::FunctionDeclaration(_) => {
+                ty::TyDeclaration::FunctionDeclaration(_, _) => {
                     Err(CompileError::UnexpectedDeclaration {
                         decl_type: "function",
                         span: ast_node.span.clone(),
@@ -158,14 +158,13 @@ impl<'eng> FnCompiler<'eng> {
                         span: ast_node.span.clone(),
                     })
                 }
-                ty::TyDeclaration::StructDeclaration(_, _)
-                | ty::TyDeclaration::EnumDeclaration(_, _) => todo!(),
-                // ty::TyDeclaration::StructDeclaration(_) => {
-                //     Err(CompileError::UnexpectedDeclaration {
-                //         decl_type: "struct",
-                //         span: ast_node.span.clone(),
-                //     })
-                // }
+                ty::TyDeclaration::EnumDeclaration(_, _) => todo!(),
+                ty::TyDeclaration::StructDeclaration(_, _) => {
+                    Err(CompileError::UnexpectedDeclaration {
+                        decl_type: "struct",
+                        span: ast_node.span.clone(),
+                    })
+                }
                 // ty::TyDeclaration::EnumDeclaration(decl_id) => {
                 //     let ted = self.decl_engine.get_enum(decl_id.clone(), &ast_node.span)?;
                 //     create_enum_aggregate(self.type_engine, context, &ted.variants).map(|_| ())?;

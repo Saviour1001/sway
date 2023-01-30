@@ -148,7 +148,8 @@ impl TyAstNode {
         match &self {
             TyAstNode {
                 span,
-                content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)),
+                content:
+                    TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id, _)),
                 ..
             } => {
                 let TyFunctionDeclaration {
@@ -172,7 +173,8 @@ impl TyAstNode {
         match &self {
             TyAstNode {
                 span,
-                content: TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)),
+                content:
+                    TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id, _)),
                 ..
             } => {
                 let TyFunctionDeclaration { attributes, .. } = check!(

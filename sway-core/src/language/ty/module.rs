@@ -46,8 +46,10 @@ impl TyModule {
         decl_engine: &'a DeclEngine,
     ) -> impl '_ + Iterator<Item = (TyFunctionDeclaration, DeclId)> {
         self.all_nodes.iter().filter_map(|node| {
-            if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(ref decl_id)) =
-                node.content
+            if let TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(
+                ref decl_id,
+                _,
+            )) = node.content
             {
                 let fn_decl = decl_engine
                     .get_function(decl_id.clone(), &node.span)

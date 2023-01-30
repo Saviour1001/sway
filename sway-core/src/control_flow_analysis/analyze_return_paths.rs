@@ -194,15 +194,16 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![entry_node])
         }
-        FunctionDeclaration(decl_id) => {
-            let fn_decl = decl_engine.get_function(decl_id.clone(), &decl.span())?;
-            let entry_node = graph.add_node(engines, node.into());
-            for leaf in leaves {
-                graph.add_edge(*leaf, entry_node, "".into());
-            }
-            connect_typed_fn_decl(engines, &fn_decl, graph, entry_node, span)?;
-            Ok(leaves.to_vec())
-        }
+        FunctionDeclaration(_, _) => todo!(),
+        // FunctionDeclaration(decl_id) => {
+        //     let fn_decl = decl_engine.get_function(decl_id.clone(), &decl.span())?;
+        //     let entry_node = graph.add_node(engines, node.into());
+        //     for leaf in leaves {
+        //         graph.add_edge(*leaf, entry_node, "".into());
+        //     }
+        //     connect_typed_fn_decl(engines, &fn_decl, graph, entry_node, span)?;
+        //     Ok(leaves.to_vec())
+        // }
         ImplTrait(decl_id) => {
             let ty::TyImplTrait {
                 trait_name,

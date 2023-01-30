@@ -56,7 +56,7 @@ impl<'a> Dependency<'a> {
                 ty::TyDeclaration::TraitDeclaration(decl_id) => decl_engine
                     .get_trait(decl_id.clone(), &declaration.span())
                     .map(|decl| decl.name),
-                ty::TyDeclaration::FunctionDeclaration(decl_id) => decl_engine
+                ty::TyDeclaration::FunctionDeclaration(decl_id, _) => decl_engine
                     .get_function(decl_id.clone(), &declaration.span())
                     .map(|decl| decl.name),
                 ty::TyDeclaration::ConstantDeclaration(decl_id) => decl_engine

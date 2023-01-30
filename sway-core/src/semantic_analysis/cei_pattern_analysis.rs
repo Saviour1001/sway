@@ -98,7 +98,7 @@ fn contract_entry_points(
     ast_nodes
         .iter()
         .flat_map(|ast_node| match &ast_node.content {
-            Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id)) => {
+            Declaration(ty::TyDeclaration::FunctionDeclaration(decl_id, _)) => {
                 decl_id_to_fn_decls(decl_engine, decl_id, &ast_node.span)
             }
             Declaration(ty::TyDeclaration::ImplTrait(decl_id)) => {

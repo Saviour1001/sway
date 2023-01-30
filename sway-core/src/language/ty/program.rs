@@ -62,30 +62,32 @@ impl TyProgram {
         let mut mains = Vec::new();
         let mut declarations = Vec::<TyDeclaration>::new();
         let mut abi_entries = Vec::new();
-        let mut fn_declarations = std::collections::HashSet::new();
+        let mut fn_declarations: std::collections::HashSet<TyDeclaration> =
+            std::collections::HashSet::new();
         for node in &root.all_nodes {
             match &node.content {
-                TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)) => {
-                    let func = check!(
-                        CompileResult::from(decl_engine.get_function(decl_id.clone(), &node.span)),
-                        return err(warnings, errors),
-                        warnings,
-                        errors
-                    );
+                TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(_, _)) => todo!(),
+                // TyAstNodeContent::Declaration(TyDeclaration::FunctionDeclaration(decl_id)) => {
+                //     let func = check!(
+                //         CompileResult::from(decl_engine.get_function(decl_id.clone(), &node.span)),
+                //         return err(warnings, errors),
+                //         warnings,
+                //         errors
+                //     );
 
-                    if func.name.as_str() == "main" {
-                        mains.push(func.clone());
-                    }
+                //     if func.name.as_str() == "main" {
+                //         mains.push(func.clone());
+                //     }
 
-                    if !fn_declarations.insert(func.name.clone()) {
-                        errors.push(CompileError::MultipleDefinitionsOfFunction {
-                            name: func.name.clone(),
-                            span: func.name.span(),
-                        });
-                    }
+                //     if !fn_declarations.insert(func.name.clone()) {
+                //         errors.push(CompileError::MultipleDefinitionsOfFunction {
+                //             name: func.name.clone(),
+                //             span: func.name.span(),
+                //         });
+                //     }
 
-                    declarations.push(TyDeclaration::FunctionDeclaration(decl_id.clone()));
-                }
+                //     declarations.push(TyDeclaration::FunctionDeclaration(decl_id.clone()));
+                // }
                 TyAstNodeContent::Declaration(TyDeclaration::ConstantDeclaration(decl_id)) => {
                     match decl_engine.get_constant(decl_id.clone(), &node.span) {
                         Ok(config_decl) if config_decl.is_configurable => {
@@ -469,7 +471,7 @@ fn disallow_impure_functions(
     let fn_decls = declarations
         .iter()
         .filter_map(|decl| match decl {
-            TyDeclaration::FunctionDeclaration(decl_id) => {
+            TyDeclaration::FunctionDeclaration(decl_id, _) => {
                 match decl_engine.get_function(decl_id.clone(), &decl.span()) {
                     Ok(fn_decl) => Some(fn_decl),
                     Err(err) => {

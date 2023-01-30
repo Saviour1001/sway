@@ -86,7 +86,7 @@ impl<'a> TypedTree<'a> {
                     self.handle_expression(&const_decl.value);
                 }
             }
-            ty::TyDeclaration::FunctionDeclaration(decl_id) => {
+            ty::TyDeclaration::FunctionDeclaration(decl_id, _) => {
                 if let Ok(func_decl) = decl_engine.get_function(decl_id.clone(), &decl_id.span()) {
                     self.collect_typed_fn_decl(&func_decl);
                 }
@@ -115,68 +115,64 @@ impl<'a> TypedTree<'a> {
                     }
                 }
             }
-            ty::TyDeclaration::StructDeclaration(_, _)
-            | ty::TyDeclaration::EnumDeclaration(_, _) => {
-                todo!()
+            ty::TyDeclaration::StructDeclaration(decl_id, _) => {
+                if let Ok(struct_decl) =
+                    decl_engine.get_struct(decl_id.clone(), &declaration.span())
+                {
+                    if let Some(mut token) = self
+                        .tokens
+                        .try_get_mut(&to_ident_key(&struct_decl.name))
+                        .try_unwrap()
+                    {
+                        token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                        token.type_def = Some(TypeDefinition::Ident(struct_decl.name));
+                    }
+
+                    for field in &struct_decl.fields {
+                        self.collect_ty_struct_field(field);
+                    }
+
+                    for type_param in &struct_decl.type_parameters {
+                        if let Some(mut token) = self
+                            .tokens
+                            .try_get_mut(&to_ident_key(&type_param.name_ident))
+                            .try_unwrap()
+                        {
+                            token.typed =
+                                Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                            token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
+                        }
+                    }
+                }
             }
-            // ty::TyDeclaration::StructDeclaration(decl_id) => {
-            //     if let Ok(struct_decl) =
-            //         decl_engine.get_struct(decl_id.clone(), &declaration.span())
-            //     {
-            //         if let Some(mut token) = self
-            //             .tokens
-            //             .try_get_mut(&to_ident_key(&struct_decl.name))
-            //             .try_unwrap()
-            //         {
-            //             token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-            //             token.type_def = Some(TypeDefinition::Ident(struct_decl.name));
-            //         }
+            ty::TyDeclaration::EnumDeclaration(decl_id, _) => {
+                if let Ok(enum_decl) = decl_engine.get_enum(decl_id.clone(), &decl_id.span()) {
+                    if let Some(mut token) = self
+                        .tokens
+                        .try_get_mut(&to_ident_key(&enum_decl.name))
+                        .try_unwrap()
+                    {
+                        token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                        token.type_def = Some(TypeDefinition::Ident(enum_decl.name.clone()));
+                    }
 
-            //         for field in &struct_decl.fields {
-            //             self.collect_ty_struct_field(field);
-            //         }
+                    for type_param in &enum_decl.type_parameters {
+                        if let Some(mut token) = self
+                            .tokens
+                            .try_get_mut(&to_ident_key(&type_param.name_ident))
+                            .try_unwrap()
+                        {
+                            token.typed =
+                                Some(TypedAstToken::TypedDeclaration(declaration.clone()));
+                            token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
+                        }
+                    }
 
-            //         for type_param in &struct_decl.type_parameters {
-            //             if let Some(mut token) = self
-            //                 .tokens
-            //                 .try_get_mut(&to_ident_key(&type_param.name_ident))
-            //                 .try_unwrap()
-            //             {
-            //                 token.typed =
-            //                     Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-            //                 token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
-            //             }
-            //         }
-            //     }
-            // }
-            // ty::TyDeclaration::EnumDeclaration(decl_id) => {
-            //     if let Ok(enum_decl) = decl_engine.get_enum(decl_id.clone(), &decl_id.span()) {
-            //         if let Some(mut token) = self
-            //             .tokens
-            //             .try_get_mut(&to_ident_key(&enum_decl.name))
-            //             .try_unwrap()
-            //         {
-            //             token.typed = Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-            //             token.type_def = Some(TypeDefinition::Ident(enum_decl.name.clone()));
-            //         }
-
-            //         for type_param in &enum_decl.type_parameters {
-            //             if let Some(mut token) = self
-            //                 .tokens
-            //                 .try_get_mut(&to_ident_key(&type_param.name_ident))
-            //                 .try_unwrap()
-            //             {
-            //                 token.typed =
-            //                     Some(TypedAstToken::TypedDeclaration(declaration.clone()));
-            //                 token.type_def = Some(TypeDefinition::TypeId(type_param.type_id));
-            //             }
-            //         }
-
-            //         for variant in &enum_decl.variants {
-            //             self.collect_ty_enum_variant(variant);
-            //         }
-            //     }
-            // }
+                    for variant in &enum_decl.variants {
+                        self.collect_ty_enum_variant(variant);
+                    }
+                }
+            }
             ty::TyDeclaration::ImplTrait(decl_id) => {
                 if let Ok(ty::TyImplTrait {
                     impl_type_parameters,
