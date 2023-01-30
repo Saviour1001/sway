@@ -20,7 +20,7 @@ impl ty::TyFunctionDeclaration {
         fn_decl: FunctionDeclaration,
         is_method: bool,
         is_in_impl_self: bool,
-    ) -> CompileResult<Self> {
+    ) -> CompileResult<(ty::TyFunctionDeclaration, TypeSubstList)> {
         let mut warnings = Vec::new();
         let mut errors = Vec::new();
 
@@ -67,12 +67,20 @@ impl ty::TyFunctionDeclaration {
 
         // Type check the type parameters, which will insert them into the
         // namespace.
-        let (new_type_parameters, _) = check!(
+        let (new_type_parameters, type_subst_list) = check!(
             TypeParameter::type_check_type_parameters(ctx.by_ref(), type_parameters, true),
             return err(warnings, errors),
             warnings,
             errors
         );
+
+        // Push the new type subst list onto the stack.
+        // NOTE: We don't ever need to pop this off of the stack because this
+        // push happens inside of a fresh typing context with a fresh copy of
+        // the namespace.
+        ctx.namespace
+            .get_mut_type_subst_stack()
+            .push(type_subst_list.clone());
 
         // type check the function parameters, which will also insert them into the namespace
         let mut new_parameters = vec![];
@@ -163,7 +171,7 @@ impl ty::TyFunctionDeclaration {
             purity,
         };
 
-        ok(function_decl, warnings, errors)
+        ok((function_decl, type_subst_list), warnings, errors)
     }
 }
 

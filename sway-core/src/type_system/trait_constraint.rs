@@ -202,12 +202,14 @@ impl TraitConstraint {
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
                 check!(
-                    trait_decl.insert_interface_surface_and_methods_into_namespace(
-                        ctx.by_ref(),
-                        trait_name,
-                        &type_arguments,
-                        type_id
-                    ),
+                    trait_decl
+                        .clone()
+                        .insert_interface_surface_and_methods_into_namespace(
+                            ctx.by_ref(),
+                            trait_name,
+                            &type_arguments,
+                            type_id
+                        ),
                     return err(warnings, errors),
                     warnings,
                     errors

@@ -63,9 +63,12 @@ impl ty::TyAbiDeclaration {
         // Type check the methods.
         let mut new_methods = vec![];
         for method in methods.into_iter() {
-            let method = check!(
+            let (method, type_subst_list) = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method.clone(), ctx.engines()),
+                (
+                    ty::TyFunctionDeclaration::error(method.clone(), ctx.engines()),
+                    TypeSubstList::new()
+                ),
                 warnings,
                 errors
             );
@@ -80,7 +83,7 @@ impl ty::TyAbiDeclaration {
             new_methods.push(ty::TyMethodValue::new(
                 method.name.clone(),
                 decl_engine.insert(type_engine, method),
-                TypeSubstList::new(),
+                type_subst_list,
             ));
         }
 

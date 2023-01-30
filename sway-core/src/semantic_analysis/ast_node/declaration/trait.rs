@@ -78,12 +78,12 @@ impl ty::TyTraitDeclaration {
             new_interface_surface.push(ty::TyMethodValue::new(
                 method.name.clone(),
                 decl_engine.insert(type_engine, method.clone()),
-                todo!(),
+                TypeSubstList::new(), // TODO: change this to a value when trait fns can take type params
             ));
             dummy_interface_surface.push(ty::TyMethodValue::new(
                 method.name.clone(),
                 decl_engine.insert(type_engine, method.to_dummy_func(Mode::NonAbi)),
-                todo!(),
+                TypeSubstList::new(), // TODO: change this to a value when trait fns can take type params
             ));
         }
 
@@ -111,16 +111,19 @@ impl ty::TyTraitDeclaration {
         // type check the methods
         let mut new_methods = vec![];
         for method in methods.into_iter() {
-            let method = check!(
+            let (method, type_subst_list) = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), method.clone(), true, false),
-                ty::TyFunctionDeclaration::error(method, engines),
+                (
+                    ty::TyFunctionDeclaration::error(method, engines),
+                    TypeSubstList::new()
+                ),
                 warnings,
                 errors
             );
             new_methods.push(ty::TyMethodValue::new(
                 method.name.clone(),
                 decl_engine.insert(type_engine, method),
-                todo!(),
+                type_subst_list,
             ));
         }
 
@@ -139,41 +142,32 @@ impl ty::TyTraitDeclaration {
 
     /// Retrieves the interface surface and implemented methods for this trait.
     pub(crate) fn retrieve_interface_surface_and_implemented_methods_for_type(
-        &self,
+        self,
         ctx: TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
-    ) -> CompileResult<(MethodMap, MethodMap)> {
-        let mut warnings = vec![];
-        let mut errors = vec![];
-
-        let mut interface_surface_methods: MethodMap = BTreeMap::new();
-        let mut impld_methods: MethodMap = BTreeMap::new();
-
+    ) -> (MethodMap, MethodMap) {
         let ty::TyTraitDeclaration {
-            interface_surface,
-            name,
-            ..
+            interface_surface, ..
         } = self;
 
-        let decl_engine = ctx.decl_engine;
         let engines = ctx.engines();
 
         // Retrieve the interface surface for this trait.
-        for method_value in interface_surface.iter() {
-            interface_surface_methods.insert(method_value.name.clone(), method_value.clone());
-        }
+        let interface_surface_methods = interface_surface
+            .into_iter()
+            .map(|method_value| (method_value.name.clone(), method_value))
+            .collect();
 
         // Retrieve the implemented methods for this type.
-        for method_value in ctx
+        let impld_methods = ctx
             .namespace
             .get_methods_for_type_and_trait_name(engines, type_id, call_path)
             .into_iter()
-        {
-            impld_methods.insert(method_value.name.clone(), method_value);
-        }
+            .map(|method_value| (method_value.name.clone(), method_value))
+            .collect();
 
-        ok((interface_surface_methods, impld_methods), warnings, errors)
+        (interface_surface_methods, impld_methods)
     }
 
     /// Retrieves the interface surface, methods, and implemented methods for
@@ -241,7 +235,7 @@ impl ty::TyTraitDeclaration {
     }
 
     pub(crate) fn insert_interface_surface_and_methods_into_namespace(
-        &self,
+        self,
         ctx: TypeCheckContext,
         trait_name: &CallPath,
         type_arguments: &[TypeArgument],
@@ -257,39 +251,10 @@ impl ty::TyTraitDeclaration {
         let ty::TyTraitDeclaration {
             interface_surface,
             methods,
-            type_parameters,
             ..
         } = self;
 
-        let mut all_methods = vec![];
-
-        // Retrieve the trait methods for this trait. Transform them into the
-        // correct typing for this impl block by using the type parameters from
-        // the original trait declaration and the given type arguments.
-        // let type_mapping = TypeSubstMap::from_type_parameters_and_type_arguments(
-        //     type_parameters
-        //         .iter()
-        //         .map(|type_param| type_param.type_id)
-        //         .collect(),
-        //     type_arguments
-        //         .iter()
-        //         .map(|type_arg| type_arg.type_id)
-        //         .collect(),
-        // );
-        // for mut method_value in interface_surface.iter() {
-        //     method_value
-        //         .type_subst_list
-        //         .replace_self_type(engines, type_id);
-        //     method_value.type_subst_list.subst(&type_mapping, engines);
-        //     all_methods.push(method_value.clone());
-        // }
-        // for mut method_value in methods.iter() {
-        //     method_value
-        //         .type_subst_list
-        //         .replace_self_type(engines, type_id);
-        //     method_value.type_subst_list.subst(&type_mapping, engines);
-        //     all_methods.push(method_value.clone());
-        // }
+        let all_methods = vec![interface_surface, methods].concat();
 
         // Insert the methods of the trait into the namespace.
         // Specifically do not check for conflicting definitions because

@@ -176,7 +176,7 @@ impl ty::TyDeclaration {
                 let span = fn_decl.span.clone();
                 let mut ctx =
                     ctx.with_type_annotation(type_engine.insert(decl_engine, TypeInfo::Unknown));
-                let fn_decl = check!(
+                let (fn_decl, fn_subst_list) = check!(
                     ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, false, false),
                     return ok(ty::TyDeclaration::ErrorRecovery(span), warnings, errors),
                     warnings,

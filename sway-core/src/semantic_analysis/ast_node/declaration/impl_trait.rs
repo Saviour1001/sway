@@ -500,13 +500,16 @@ impl ty::TyImplTrait {
 
         // type check the methods inside of the impl block
         let mut methods = vec![];
+        let mut type_subst_lists = vec![];
         for fn_decl in functions.into_iter() {
-            methods.push(check!(
+            let (method, type_subst_list) = check!(
                 ty::TyFunctionDeclaration::type_check(ctx.by_ref(), fn_decl, true, true),
                 continue,
                 warnings,
                 errors
-            ));
+            );
+            methods.push(method);
+            type_subst_lists.push(type_subst_list);
         }
         if !errors.is_empty() {
             return err(warnings, errors);
@@ -526,10 +529,11 @@ impl ty::TyImplTrait {
 
         let methods = methods
             .into_iter()
-            .map(|method| ty::TyMethodValue {
+            .zip(type_subst_lists.into_iter())
+            .map(|(method, type_subst_list)| ty::TyMethodValue {
                 name: method.name.clone(),
                 decl_id: decl_engine.insert(type_engine, method),
-                type_subst_list: todo!(),
+                type_subst_list,
             })
             .collect();
 
@@ -633,7 +637,6 @@ fn type_check_trait_implementation(
             warnings,
             errors
         );
-        let name = method.name.clone();
 
         // Add this method to the checklist.
         method_checklist.insert(method_value.name.clone(), method);
@@ -643,17 +646,19 @@ fn type_check_trait_implementation(
     }
 
     for impl_method in impl_methods {
-        let impl_method = check!(
+        let (impl_method, type_subst_list) = check!(
             type_check_impl_method(
                 ctx.by_ref(),
-                impl_type_parameters,
                 impl_method,
                 trait_name,
                 is_contract,
                 &impld_methods,
                 &method_checklist
             ),
-            ty::TyFunctionDeclaration::error(impl_method.clone(), engines),
+            (
+                ty::TyFunctionDeclaration::error(impl_method.clone(), engines),
+                TypeSubstList::new()
+            ),
             warnings,
             errors
         );
@@ -664,10 +669,11 @@ fn type_check_trait_implementation(
         method_checklist.remove(&name);
 
         // Add this method to the "impld methods".
-        impld_methods.insert(name.clone(), ty::TyMethodValue::new(name, decl_id, todo!()));
+        impld_methods.insert(
+            name.clone(),
+            ty::TyMethodValue::new(name, decl_id, type_subst_list),
+        );
     }
-
-    let mut all_methods: Vec<ty::TyMethodValue> = impld_methods.values().cloned().collect();
 
     // check that the implementation checklist is complete
     if !method_checklist.is_empty() {
@@ -681,6 +687,8 @@ fn type_check_trait_implementation(
         });
     }
 
+    let all_methods: Vec<ty::TyMethodValue> = impld_methods.values().cloned().collect();
+
     if errors.is_empty() {
         ok(all_methods, warnings, errors)
     } else {
@@ -690,13 +698,12 @@ fn type_check_trait_implementation(
 
 fn type_check_impl_method(
     mut ctx: TypeCheckContext,
-    impl_type_parameters: &[TypeParameter],
     impl_method: &FunctionDeclaration,
     trait_name: &CallPath,
     is_contract: bool,
     impld_methods: &BTreeMap<Ident, ty::TyMethodValue>,
     method_checklist: &BTreeMap<Ident, ty::TyTraitFn>,
-) -> CompileResult<ty::TyFunctionDeclaration> {
+) -> CompileResult<(ty::TyFunctionDeclaration, TypeSubstList)> {
     let mut warnings = vec![];
     let mut errors = vec![];
 
@@ -719,7 +726,7 @@ fn type_check_impl_method(
     };
 
     // type check the function declaration
-    let mut impl_method = check!(
+    let (mut impl_method, type_subst_list) = check!(
         ty::TyFunctionDeclaration::type_check(ctx.by_ref(), impl_method.clone(), true, false),
         return err(warnings, errors),
         warnings,
@@ -874,47 +881,8 @@ fn type_check_impl_method(
         return err(warnings, errors);
     }
 
-    // if this method uses a type parameter from its parent's impl type
-    // parameters that is not constrained by the type that we are
-    // implementing for, then we need to add that type parameter to the
-    // method's type parameters so that in-line monomorphization can
-    // complete.
-    //
-    // NOTE: this is a semi-hack that is used to force monomorphization of
-    // trait methods that contain a generic defined in the parent impl...
-    // without stuffing the generic into the method's type parameters, its
-    // not currently possible to monomorphize on that generic at function
-    // application time.
-    //
-    // *This will change* when either https://github.com/FuelLabs/sway/issues/1267
-    // or https://github.com/FuelLabs/sway/issues/2814 goes in.
-    let unconstrained_type_parameters_in_this_function: HashSet<WithEngines<'_, TypeParameter>> =
-        impl_method
-            .unconstrained_type_parameters(engines, impl_type_parameters)
-            .into_iter()
-            .cloned()
-            .map(|x| WithEngines::new(x, engines))
-            .collect();
-    let unconstrained_type_parameters_in_the_type: HashSet<WithEngines<'_, TypeParameter>> =
-        self_type
-            .unconstrained_type_parameters(engines, impl_type_parameters)
-            .into_iter()
-            .cloned()
-            .map(|x| WithEngines::new(x, engines))
-            .collect::<HashSet<_>>();
-    let mut unconstrained_type_parameters_to_be_added =
-        unconstrained_type_parameters_in_this_function
-            .difference(&unconstrained_type_parameters_in_the_type)
-            .cloned()
-            .into_iter()
-            .map(|x| x.thing)
-            .collect::<Vec<_>>();
-    impl_method
-        .type_parameters
-        .append(&mut unconstrained_type_parameters_to_be_added);
-
     if errors.is_empty() {
-        ok(impl_method, warnings, errors)
+        ok((impl_method, type_subst_list), warnings, errors)
     } else {
         err(warnings, errors)
     }
@@ -1073,16 +1041,13 @@ fn handle_supertraits(
 
                 // Retrieve the interface surface and implemented method ids for
                 // this trait.
-                let (trait_interface_surface_methods, trait_impld_methods) = check!(
-                    trait_decl.retrieve_interface_surface_and_implemented_methods_for_type(
+                let (trait_interface_surface_methods, trait_impld_methods) = trait_decl
+                    .clone()
+                    .retrieve_interface_surface_and_implemented_methods_for_type(
                         ctx.by_ref(),
                         self_type,
-                        &supertrait.name
-                    ),
-                    continue,
-                    warnings,
-                    errors
-                );
+                        &supertrait.name,
+                    );
                 interface_surface_methods.extend(trait_interface_surface_methods);
                 impld_methods.extend(trait_impld_methods);
 
