@@ -1,6 +1,8 @@
+use std::hash::Hasher;
+
 use super::{FunctionDeclaration, FunctionParameter};
 
-use crate::{language::*, transform, type_system::*};
+use crate::{decl_engine::DeclId, engine_threading::*, language::*, transform, type_system::*};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]
@@ -15,9 +17,10 @@ pub struct TraitDeclaration {
     pub span: Span,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Supertrait {
     pub name: CallPath,
+    pub decl_id: Option<DeclId>,
 }
 
 impl Spanned for Supertrait {

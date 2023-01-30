@@ -3,6 +3,7 @@ use std::hash::{Hash, Hasher};
 use sway_types::Span;
 
 use crate::{
+    decl_engine::DeclId,
     engine_threading::*,
     language::{ty::*, CallPath},
     type_system::*,
@@ -15,6 +16,7 @@ pub struct TyImplTrait {
     pub trait_type_arguments: Vec<TypeArgument>,
     pub methods: Vec<TyMethodValue>,
     pub implementing_for_type_id: TypeId,
+    pub trait_decl_id: Option<DeclId>,
     pub type_implementing_for_span: Span,
     pub span: Span,
 }

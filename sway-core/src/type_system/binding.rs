@@ -1,11 +1,11 @@
 use sway_types::{Span, Spanned};
 
 use crate::{
+    engine_threading::*,
     error::*,
     language::{ty, CallPath},
     semantic_analysis::TypeCheckContext,
-    type_system::EnforceTypeArguments,
-    TypeInfo,
+    type_system::*,
 };
 
 use super::{TypeArgument, TypeId};
@@ -79,6 +79,15 @@ pub struct TypeBinding<T> {
 impl<T> Spanned for TypeBinding<T> {
     fn span(&self) -> Span {
         self.span.clone()
+    }
+}
+
+// NOTE: Hash and PartialEq must uphold the invariant:
+// k1 == k2 -> hash(k1) == hash(k2)
+// https://doc.rust-lang.org/std/collections/struct.HashMap.html
+impl PartialEqWithEngines for TypeBinding<()> {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        self.span == other.span && self.type_arguments.eq(&other.type_arguments, type_engine)
     }
 }
 

@@ -22,6 +22,8 @@ impl PartialEq for DeclId {
     }
 }
 
+impl Eq for DeclId {}
+
 impl Hash for DeclId {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.hash(state);

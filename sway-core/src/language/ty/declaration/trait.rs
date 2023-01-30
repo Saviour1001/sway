@@ -3,7 +3,6 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Span};
 
 use crate::{
-    decl_engine::DeclId,
     engine_threading::*,
     language::{parsed, ty::*, Visibility},
     transform,

@@ -824,7 +824,7 @@ mod tests {
         definition
     }
 
-    async fn turbofish_definition_check(
+    async fn turbofish_definition_check_option(
         service: &mut LspService<Backend>,
         uri: &Url,
         token_line: i32,
@@ -842,6 +842,45 @@ mod tests {
             .as_str()
             .unwrap();
         assert!(uri.ends_with("sway-lib-std/src/option.sw"));
+    }
+
+    async fn turbofish_definition_check_result(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        token_line: i32,
+        token_char: i32,
+        id: i64,
+    ) {
+        let definition = definition_request(uri, token_line, token_char, id);
+        let response = call_request(service, definition).await.unwrap().unwrap();
+        let json = response.result().unwrap();
+        let uri = json
+            .as_object()
+            .unwrap()
+            .get("uri")
+            .unwrap()
+            .as_str()
+            .unwrap();
+        assert!(uri.ends_with("sway-lib-std/src/result.sw"));
+    }
+    async fn traits_definition_check(
+        service: &mut LspService<Backend>,
+        uri: &Url,
+        token_line: i32,
+        token_char: i32,
+        id: i64,
+    ) {
+        let definition = definition_request(uri, token_line, token_char, id);
+        let response = call_request(service, definition).await.unwrap().unwrap();
+        let json = response.result().unwrap();
+        let uri = json
+            .as_object()
+            .unwrap()
+            .get("uri")
+            .unwrap()
+            .as_str()
+            .unwrap();
+        assert!(uri.ends_with("sway-lsp/test/fixtures/tokens/traits/src/traits.sw"));
     }
 
     async fn hover_request(service: &mut LspService<Backend>, uri: &Url) -> Request {
@@ -1012,11 +1051,11 @@ mod tests {
               "range": {
                 "end": {
                   "character": 7,
-                  "line": 13
+                  "line": 11
                 },
                 "start": {
                   "character": 0,
-                  "line": 13
+                  "line": 11
                 }
               }
             }),
@@ -1033,11 +1072,11 @@ mod tests {
               "range": {
                 "end": {
                   "character": 7,
-                  "line": 8
+                  "line": 6
                 },
                 "start": {
                   "character": 0,
-                  "line": 8
+                  "line": 6
                 }
               }
             }),
@@ -1049,11 +1088,11 @@ mod tests {
               "range": {
                 "end": {
                   "character": 7,
-                  "line": 4
+                  "line": 2
                 },
                 "start": {
                   "character": 3,
-                  "line": 4
+                  "line": 2
                 }
               }
             }),
@@ -1188,9 +1227,36 @@ mod tests {
         )
         .await;
 
-        turbofish_definition_check(&mut service, &uri, 13, 13, 1).await;
-        turbofish_definition_check(&mut service, &uri, 14, 17, 2).await;
-        turbofish_definition_check(&mut service, &uri, 15, 29, 3).await;
+        turbofish_definition_check_option(&mut service, &uri, 15, 12, 1).await;
+        turbofish_definition_check_option(&mut service, &uri, 16, 17, 2).await;
+        turbofish_definition_check_option(&mut service, &uri, 17, 29, 3).await;
+        turbofish_definition_check_option(&mut service, &uri, 18, 19, 4).await;
+
+        turbofish_definition_check_option(&mut service, &uri, 20, 13, 5).await;
+        turbofish_definition_check_result(&mut service, &uri, 20, 19, 6).await;
+        turbofish_definition_check_option(&mut service, &uri, 21, 19, 7).await;
+        turbofish_definition_check_result(&mut service, &uri, 21, 25, 8).await;
+        turbofish_definition_check_option(&mut service, &uri, 22, 29, 9).await;
+        turbofish_definition_check_result(&mut service, &uri, 22, 36, 10).await;
+        turbofish_definition_check_option(&mut service, &uri, 23, 18, 11).await;
+        turbofish_definition_check_result(&mut service, &uri, 23, 27, 12).await;
+
+        shutdown_and_exit(&mut service).await;
+    }
+
+    #[tokio::test]
+    async fn go_to_definition_for_traits() {
+        let (mut service, _) = LspService::new(Backend::new);
+        let uri = init_and_open(
+            &mut service,
+            test_fixtures_dir().join("tokens").join("traits"),
+        )
+        .await;
+
+        traits_definition_check(&mut service, &uri, 6, 10, 1).await;
+        traits_definition_check(&mut service, &uri, 7, 10, 2).await;
+        traits_definition_check(&mut service, &uri, 7, 20, 3).await;
+        traits_definition_check(&mut service, &uri, 10, 6, 4).await;
 
         shutdown_and_exit(&mut service).await;
     }
