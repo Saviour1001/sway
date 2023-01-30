@@ -5,7 +5,8 @@ use std::{
 
 use anyhow::anyhow;
 use sway_ir::{
-    create_const_combine_pass, create_dce_pass, create_inline_pass, create_mem2reg_pass,
+    create_arg_demotion_pass, create_const_combine_pass, create_const_demotion_pass,
+    create_dce_pass, create_inline_pass, create_mem2reg_pass, create_ret_demotion_pass,
     create_simplify_cfg_pass, PassManager, PassManagerConfig,
 };
 
@@ -16,6 +17,9 @@ fn main() -> Result<(), anyhow::Error> {
     let mut pass_mgr = PassManager::default();
 
     pass_mgr.register(create_const_combine_pass());
+    pass_mgr.register(create_const_demotion_pass());
+    pass_mgr.register(create_arg_demotion_pass());
+    pass_mgr.register(create_ret_demotion_pass());
     pass_mgr.register(create_inline_pass());
     pass_mgr.register(create_simplify_cfg_pass());
     pass_mgr.register(create_dce_pass());

@@ -1,0 +1,56 @@
+// This test makes sure that all the multiple call sites for foo() are updated.
+
+// regex: ID=[[:alpha:]0-9]+
+
+script {
+    entry fn main() -> () {
+        local b256 twobee = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
+        local b256 dada = const b256 0xdadadadadadadadadadadadadadadadadadadadadadadadadadadadadadadada
+
+        entry():
+        v0 = get_local ptr b256, twobee
+// check: $(tb_var=$ID) = get_local ptr b256, twobee
+        v1 = load v0
+        v2 = get_local ptr b256, dada
+// check: $(dada_var=$ID) = get_local ptr b256, dada
+        v3 = load v2
+        v4 = call bar()
+        v5 = const u64 33
+        v6 = call foo(v1, v5)
+// check: call foo($tb_var, v5)
+        v7 = const u64 44
+        v8 = call foo(v3, v7)
+// check: call foo($dada_var, v7)
+        v9 = const unit ()
+        ret () v9
+    }
+
+    fn bar() -> () {
+        local b256 feve = const b256 0x5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e
+        local b256 fafa = const b256 0xfafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafa
+
+        entry():
+        v0 = get_local ptr b256, feve
+// check: $(feve_var=$ID) = get_local ptr b256, feve
+        v1 = load v0
+        v2 = get_local ptr b256, fafa
+// check: $(fafa_var=$ID) = get_local ptr b256, fafa
+        v3 = load v2
+        v4 = const u64 11
+        v5 = call foo(v1, v4)
+// check: call foo($feve_var, v4)
+        v6 = const u64 22
+        v7 = call foo(v3, v6)
+// check: call foo($fafa_var, v6)
+        v8 = const unit ()
+        ret () v8
+    }
+
+    fn foo(x: b256, y: u64) -> () {
+        entry(x: b256, y: u64):
+        v0 = const u64 3
+        log u64 y, v0
+        v1 = const unit ()
+        ret () v1
+    }
+}

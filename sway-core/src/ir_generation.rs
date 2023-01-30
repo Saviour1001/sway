@@ -90,6 +90,31 @@ pub fn compile_program(
             &test_fns,
         ),
     }?;
-    ctx.verify()
-        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))
+
+    let ir_error_to_internal = |ir_error: sway_ir::IrError| {
+        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+    };
+
+    // FuelVM target specific transforms.
+    let all_functions = ctx
+        .module_iter()
+        .flat_map(|module| module.function_iter(&ctx))
+        .collect::<Vec<_>>();
+
+    let ar_stub = sway_ir::AnalysisResults::default();
+    for func in &all_functions {
+        // Demote large by-value constants to by-reference local variables.  This needs to be done
+        // before demoting function args, otherwise function arg demotion won't know what to do
+        // with a large const.  I.e., it needs to be demoted to a ptr+load first.
+        sway_ir::optimize::const_demotion(&mut ctx, &ar_stub, *func)
+            .map_err(ir_error_to_internal)?;
+
+        // Demote large by-value function args to by-reference.
+        sway_ir::optimize::fn_arg_demotion(&mut ctx, &ar_stub, *func)
+            .map_err(ir_error_to_internal)?;
+    }
+
+    //    println!("{ctx}");
+
+    ctx.verify().map_err(ir_error_to_internal)
 }

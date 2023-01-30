@@ -1,0 +1,27 @@
+script {
+    entry fn main() -> u64 {
+        entry():
+        v0 = const u64 42
+        ret u64 v0
+    }
+
+    fn foo(e: { u64 }) -> bool {
+// not:   fn foo(e: { u64 })
+// check: fn foo(e: ptr { u64 })
+        entry(e: { u64 }):
+// not:   entry(e: { u64 }):
+// check: entry(e: ptr { u64 }):
+        v0 = const bool false
+        ret bool v0
+    }
+
+    fn bar(i: b256, j: u64) -> bool {
+// not:  fn bar(i: b256, j: u64)
+// check: fn bar(i: ptr b256, j: u64) -> bool {
+        entry(i: b256, j: u64):
+// not:   entry(i: b256, j: u64):
+// check: entry(i: ptr b256, j: u64):
+        v0 = const bool false
+        ret bool v0
+    }
+}

@@ -9,13 +9,13 @@
 use rustc_hash::FxHashMap;
 
 use crate::{
+    block::BlockArgument,
     constant::Constant,
     context::Context,
     instruction::{FuelVmInstruction, Instruction},
     irtype::Type,
     metadata::{combine, MetadataIndex},
     pretty::DebugWithContext,
-    BlockArgument,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -196,17 +196,6 @@ impl Value {
         }
     }
 
-    /// Iff this value is an argument, return its type.
-    pub fn get_argument_type_and_byref(&self, context: &Context) -> Option<(Type, bool)> {
-        if let ValueDatum::Argument(BlockArgument { ty, by_ref, .. }) =
-            &context.values.get(self.0).unwrap().value
-        {
-            Some((*ty, *by_ref))
-        } else {
-            None
-        }
-    }
-
     /// Get the type for this value, if found.
     ///
     /// Arguments and constants always have a type, but only some instructions do.
@@ -217,5 +206,11 @@ impl Value {
             ValueDatum::Constant(c) => Some(c.ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }
+    }
+
+    /// Get the pointer inner type for this value, iff it is a pointer.
+    pub fn match_ptr_type(&self, context: &Context) -> Option<Type> {
+        self.get_type(context)
+            .and_then(|ty| ty.get_inner_type(context))
     }
 }

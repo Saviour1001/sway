@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use sway_ir::{
-    create_const_combine_pass, create_dce_pass, create_mem2reg_pass, create_simplify_cfg_pass,
+    create_arg_demotion_pass, create_const_combine_pass, create_const_demotion_pass,
+    create_dce_pass, create_mem2reg_pass, create_ret_demotion_pass, create_simplify_cfg_pass,
     optimize as opt, Context, PassManager, PassManagerConfig,
 };
 
@@ -165,6 +166,48 @@ fn mem2reg() {
         let mut pass_mgr = PassManager::default();
         let mut pmgr_config = PassManagerConfig { to_run: vec![] };
         let pass = pass_mgr.register(create_mem2reg_pass());
+        pmgr_config.to_run.push(pass.to_string());
+        pass_mgr.run(ir, &pmgr_config).unwrap()
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn demote_arg() {
+    run_tests("demote_arg", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        let mut pmgr_config = PassManagerConfig { to_run: vec![] };
+        let pass = pass_mgr.register(create_arg_demotion_pass());
+        pmgr_config.to_run.push(pass.to_string());
+        pass_mgr.run(ir, &pmgr_config).unwrap()
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn demote_const() {
+    run_tests("demote_const", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        let mut pmgr_config = PassManagerConfig { to_run: vec![] };
+        let pass = pass_mgr.register(create_const_demotion_pass());
+        pmgr_config.to_run.push(pass.to_string());
+        pass_mgr.run(ir, &pmgr_config).unwrap()
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn demote_ret() {
+    run_tests("demote_ret", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        let mut pmgr_config = PassManagerConfig { to_run: vec![] };
+        let pass = pass_mgr.register(create_ret_demotion_pass());
         pmgr_config.to_run.push(pass.to_string());
         pass_mgr.run(ir, &pmgr_config).unwrap()
     })

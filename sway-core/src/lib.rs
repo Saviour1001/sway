@@ -295,8 +295,7 @@ pub fn parsed_to_ast(
     errors.extend(cfa_res.errors);
     warnings.extend(cfa_res.warnings);
 
-    // Evaluate const declarations,
-    // to allow storage slots initializion with consts.
+    // Evaluate const declarations, to allow storage slots initializion with consts.
     let mut ctx = Context::default();
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);

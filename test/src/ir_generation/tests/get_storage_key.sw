@@ -29,8 +29,8 @@ impl GetStorageKeyTest for Contract {
 
 // check: fn foo1<2994c98e>() -> b256
 // check: entry():
-// nextln: $(empty_struct_val=$VAL) = get_local {  } $ID
-// nextln: $(retv=$VAL) = get_local b256 $(local_ret_var=$ID)
+// nextln: $(empty_struct_val=$VAL) = get_local ptr {  }, $ID
+// nextln: $(retv=$VAL) = get_local ptr b256, $(local_ret_var=$ID)
 // nextln: call $(fn_name=$ID)($empty_struct_val, $retv)
 
 // check: fn $fn_name(self $MD: {  }, inout __ret_value $MD: b256) -> b256
