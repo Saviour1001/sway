@@ -133,7 +133,7 @@ impl TypeBinding<CallPath<(TypeInfo, Span)>> {
 
         // resolve the type of the type info object
         let type_id = check!(
-            ctx.resolve_type_with_self(
+            ctx.resolve(
                 type_engine.insert(decl_engine, type_info),
                 &type_info_span,
                 EnforceTypeArguments::No,
@@ -171,7 +171,7 @@ impl TypeBinding<CallPath> {
         // replace the self types inside of the type arguments
         for type_argument in self.type_arguments.iter_mut() {
             check!(
-                ctx.resolve_type_with_self(
+                ctx.resolve(
                     type_argument.type_id,
                     &type_argument.span,
                     EnforceTypeArguments::Yes,
@@ -189,35 +189,10 @@ impl TypeBinding<CallPath> {
 
         // monomorphize the declaration, if needed
         let new_decl = match unknown_decl {
-            // ty::TyDeclaration::FunctionDeclaration(original_id) => {
-            //     // get the copy from the declaration engine
-            //     let mut new_copy = check!(
-            //         CompileResult::from(decl_engine.get_function(original_id, &self.span())),
-            //         return err(warnings, errors),
-            //         warnings,
-            //         errors
-            //     );
-
-            //     // monomorphize the copy, in place
-            //     check!(
-            //         ctx.monomorphize(
-            //             &mut new_copy,
-            //             &mut self.type_arguments,
-            //             EnforceTypeArguments::No,
-            //             &self.span
-            //         ),
-            //         return err(warnings, errors),
-            //         warnings,
-            //         errors
-            //     );
-
-            //     // insert the new copy into the declaration engine
-            //     let new_id = decl_engine.insert(type_engine, new_copy);
-
-            //     ty::TyDeclaration::FunctionDeclaration(new_id)
-            // }
-            ty::TyDeclaration::FunctionDeclaration(_, _)
-            | ty::TyDeclaration::StructDeclaration(_, _)
+            ty::TyDeclaration::FunctionDeclaration(original_id, type_subst_list) => {
+                ty::TyDeclaration::FunctionDeclaration(original_id, type_subst_list)
+            }
+            ty::TyDeclaration::StructDeclaration(_, _)
             | ty::TyDeclaration::EnumDeclaration(_, _) => {
                 todo!()
             }

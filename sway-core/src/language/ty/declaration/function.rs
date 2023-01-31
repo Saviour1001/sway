@@ -77,19 +77,6 @@ impl SubstTypes for TyFunctionDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyFunctionDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.return_type.replace_self_type(engines, self_type);
-        self.body.replace_self_type(engines, self_type);
-    }
-}
-
 impl Spanned for TyFunctionDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
@@ -360,12 +347,6 @@ impl HashWithEngines for TyFunctionParameter {
 impl SubstTypes for TyFunctionParameter {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         self.type_id.subst(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyFunctionParameter {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_id.replace_self_type(engines, self_type);
     }
 }
 

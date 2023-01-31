@@ -77,7 +77,7 @@ impl ty::TyStructField {
         let decl_engine = ctx.decl_engine;
         let initial_type_id = type_engine.insert(decl_engine, field.type_info);
         let r#type = check!(
-            ctx.resolve_type_with_self(
+            ctx.resolve(
                 initial_type_id,
                 &field.type_span,
                 EnforceTypeArguments::Yes,

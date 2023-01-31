@@ -45,9 +45,3 @@ impl SubstTypes for TyMethodValue {
         self.type_subst_list.subst(type_mapping, engines);
     }
 }
-
-impl ReplaceSelfType for TyMethodValue {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_subst_list.replace_self_type(engines, self_type);
-    }
-}

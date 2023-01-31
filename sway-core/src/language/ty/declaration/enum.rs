@@ -56,17 +56,6 @@ impl FinalizeTypes for TyEnumDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyEnumDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.variants
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}
-
 impl Spanned for TyEnumDeclaration {
     fn span(&self) -> Span {
         self.span.clone()
@@ -147,11 +136,5 @@ impl SubstTypes for TyEnumVariant {
 impl FinalizeTypes for TyEnumVariant {
     fn finalize_inner(&mut self, engines: Engines<'_>, subst_list: &TypeSubstList) {
         self.type_id.finalize(engines, subst_list);
-    }
-}
-
-impl ReplaceSelfType for TyEnumVariant {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.type_id.replace_self_type(engines, self_type);
     }
 }

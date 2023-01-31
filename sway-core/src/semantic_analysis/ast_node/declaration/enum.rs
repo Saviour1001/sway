@@ -80,7 +80,7 @@ impl ty::TyEnumVariant {
         let decl_engine = ctx.decl_engine;
         let initial_type_id = type_engine.insert(decl_engine, variant.type_info);
         let enum_variant_type = check!(
-            ctx.resolve_type_with_self(
+            ctx.resolve(
                 initial_type_id,
                 &variant.span,
                 EnforceTypeArguments::Yes,

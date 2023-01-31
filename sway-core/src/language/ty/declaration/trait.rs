@@ -65,24 +65,6 @@ impl SubstTypes for TyTraitDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyTraitDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        todo!();
-        // self.type_parameters
-        //     .iter_mut()
-        //     .for_each(|x| x.replace_self_type(engines, self_type));
-        // self.interface_surface
-        //     .iter_mut()
-        //     .for_each(|function_decl_id| {
-        //         let new_decl_id = function_decl_id
-        //             .clone()
-        //             .replace_self_type_and_insert_new(engines, self_type);
-        //         function_decl_id.replace_id(*new_decl_id);
-        //     });
-        // // we don't have to type check the methods because it hasn't been type checked yet
-    }
-}
-
 impl MonomorphizeHelper for TyTraitDeclaration {
     fn name(&self) -> &Ident {
         &self.name

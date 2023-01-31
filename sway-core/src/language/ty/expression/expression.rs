@@ -42,13 +42,6 @@ impl SubstTypes for TyExpression {
     }
 }
 
-impl ReplaceSelfType for TyExpression {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.return_type.replace_self_type(engines, self_type);
-        self.expression.replace_self_type(engines, self_type);
-    }
-}
-
 impl DisplayWithEngines for TyExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result {
         write!(

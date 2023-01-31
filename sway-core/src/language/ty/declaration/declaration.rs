@@ -142,28 +142,6 @@ impl SubstTypes for TyDeclaration {
     }
 }
 
-impl ReplaceSelfType for TyDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        todo!();
-        // use TyDeclaration::*;
-        // match self {
-        //     VariableDeclaration(ref mut var_decl) => var_decl.replace_self_type(engines, self_type),
-        //     FunctionDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
-        //     TraitDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
-        //     StructDeclaration(_, _) | EnumDeclaration(_, _) => todo!(),
-        //     // StructDeclaration(ref mut decl_id) => decl_id.replace_self_type(engines, self_type),
-        //     // EnumDeclaration(ref mut decl_id, _) => decl_id.replace_self_type(engines, self_type),
-        //     ImplTrait(decl_id) => decl_id.replace_self_type(engines, self_type),
-        //     // generics in an ABI is unsupported by design
-        //     AbiDeclaration(..)
-        //     | ConstantDeclaration(_)
-        //     | StorageDeclaration(..)
-        //     | GenericTypeForFunctionScope { .. }
-        //     | ErrorRecovery(_) => (),
-        // }
-    }
-}
-
 impl Spanned for TyDeclaration {
     fn span(&self) -> Span {
         use TyDeclaration::*;

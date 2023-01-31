@@ -214,31 +214,6 @@ impl SubstTypes for TypeSubstList {
     }
 }
 
-impl ReplaceSelfType for TypeSubstList {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        self.list
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
-    }
-}
-
-// #[derive(Clone, Debug, Default)]
-// pub(crate) struct TypeSubstStack(Vec<TypeSubstList>);
-
-// impl TypeSubstStack {
-//     pub(crate) fn peek(&self) -> Option<TypeSubstList> {
-//         self.0.last().cloned()
-//     }
-
-//     pub(crate) fn push(&mut self, value: TypeSubstList) {
-//         self.0.push(value);
-//     }
-
-//     pub(crate) fn pop(&mut self) -> Option<TypeSubstList> {
-//         self.0.pop()
-//     }
-// }
-
 type SourceType = TypeId;
 type DestinationType = TypeId;
 

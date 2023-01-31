@@ -433,7 +433,9 @@ impl HashWithEngines for TyExpressionVariant {
                 state.write_u8(11);
                 condition.hash(state, type_engine);
                 then.hash(state, type_engine);
-                r#else.as_ref().map(|x| x.hash(state, type_engine));
+                if let Some(x) = r#else.as_ref() {
+                    x.hash(state, type_engine)
+                }
             }
             Self::AsmExpression {
                 registers,
@@ -647,116 +649,6 @@ impl SubstTypes for TyExpressionVariant {
             Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
             StorageReassignment(..) => (),
             Return(stmt) => stmt.subst(type_mapping, engines),
-        }
-    }
-}
-
-impl ReplaceSelfType for TyExpressionVariant {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        use TyExpressionVariant::*;
-        match self {
-            Literal(..) => (),
-            FunctionApplication {
-                arguments,
-                ref mut function_decl_id,
-                ..
-            } => {
-                arguments
-                    .iter_mut()
-                    .for_each(|(_ident, expr)| expr.replace_self_type(engines, self_type));
-                let new_decl_id = function_decl_id
-                    .clone()
-                    .replace_self_type_and_insert_new(engines, self_type);
-                function_decl_id.replace_id(*new_decl_id);
-            }
-            LazyOperator { lhs, rhs, .. } => {
-                (*lhs).replace_self_type(engines, self_type);
-                (*rhs).replace_self_type(engines, self_type);
-            }
-            VariableExpression { .. } => (),
-            Tuple { fields } => fields
-                .iter_mut()
-                .for_each(|x| x.replace_self_type(engines, self_type)),
-            Array { contents } => contents
-                .iter_mut()
-                .for_each(|x| x.replace_self_type(engines, self_type)),
-            ArrayIndex { prefix, index } => {
-                (*prefix).replace_self_type(engines, self_type);
-                (*index).replace_self_type(engines, self_type);
-            }
-            StructExpression { fields, .. } => fields
-                .iter_mut()
-                .for_each(|x| x.replace_self_type(engines, self_type)),
-            CodeBlock(block) => {
-                block.replace_self_type(engines, self_type);
-            }
-            FunctionParameter => (),
-            IfExp {
-                condition,
-                then,
-                r#else,
-            } => {
-                condition.replace_self_type(engines, self_type);
-                then.replace_self_type(engines, self_type);
-                if let Some(ref mut r#else) = r#else {
-                    r#else.replace_self_type(engines, self_type);
-                }
-            }
-            AsmExpression { registers, .. } => {
-                registers
-                    .iter_mut()
-                    .for_each(|x| x.replace_self_type(engines, self_type));
-            }
-            StructFieldAccess {
-                prefix,
-                field_to_access,
-                ref mut resolved_type_of_parent,
-                ..
-            } => {
-                resolved_type_of_parent.replace_self_type(engines, self_type);
-                field_to_access.replace_self_type(engines, self_type);
-                prefix.replace_self_type(engines, self_type);
-            }
-            TupleElemAccess {
-                prefix,
-                ref mut resolved_type_of_parent,
-                ..
-            } => {
-                resolved_type_of_parent.replace_self_type(engines, self_type);
-                prefix.replace_self_type(engines, self_type);
-            }
-            EnumInstantiation { .. } => {
-                todo!();
-                // enum_decl.replace_self_type(engines, self_type);
-                // if let Some(ref mut contents) = contents {
-                //     contents.replace_self_type(engines, self_type)
-                // };
-            }
-            AbiCast { address, .. } => address.replace_self_type(engines, self_type),
-            StorageAccess { .. } => (),
-            IntrinsicFunction(kind) => {
-                kind.replace_self_type(engines, self_type);
-            }
-            EnumTag { exp } => {
-                exp.replace_self_type(engines, self_type);
-            }
-            UnsafeDowncast { exp, variant } => {
-                exp.replace_self_type(engines, self_type);
-                variant.replace_self_type(engines, self_type);
-            }
-            AbiName(_) => (),
-            WhileLoop {
-                ref mut condition,
-                ref mut body,
-            } => {
-                condition.replace_self_type(engines, self_type);
-                body.replace_self_type(engines, self_type);
-            }
-            Break => (),
-            Continue => (),
-            Reassignment(reassignment) => reassignment.replace_self_type(engines, self_type),
-            StorageReassignment(..) => (),
-            Return(stmt) => stmt.replace_self_type(engines, self_type),
         }
     }
 }

@@ -24,9 +24,9 @@ impl PartialEqWithEngines for TyAsmRegisterDeclaration {
 impl HashWithEngines for TyAsmRegisterDeclaration {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.name.hash(state);
-        self.initializer
-            .as_ref()
-            .map(|x| x.hash(state, type_engine));
+        if let Some(x) = self.initializer.as_ref() {
+            x.hash(state, type_engine)
+        }
     }
 }
 
@@ -34,14 +34,6 @@ impl SubstTypes for TyAsmRegisterDeclaration {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: Engines<'_>) {
         if let Some(ref mut initializer) = self.initializer {
             initializer.subst(type_mapping, engines)
-        }
-    }
-}
-
-impl ReplaceSelfType for TyAsmRegisterDeclaration {
-    fn replace_self_type(&mut self, engines: Engines<'_>, self_type: TypeId) {
-        if let Some(ref mut initializer) = self.initializer {
-            initializer.replace_self_type(engines, self_type)
         }
     }
 }

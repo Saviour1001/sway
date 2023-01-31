@@ -50,7 +50,12 @@ impl ty::TyImplTrait {
         // resolve the types of the trait type arguments
         for type_arg in trait_type_arguments.iter_mut() {
             type_arg.type_id = check!(
-                ctx.resolve_type_without_self(type_arg.type_id, &type_arg.span, None),
+                ctx.resolve(
+                    type_arg.type_id,
+                    &type_arg.span,
+                    EnforceTypeArguments::Yes,
+                    None
+                ),
                 return err(warnings, errors),
                 warnings,
                 errors
@@ -59,9 +64,10 @@ impl ty::TyImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            ctx.resolve_type_without_self(
+            ctx.resolve(
                 type_engine.insert(decl_engine, type_implementing_for),
                 &type_implementing_for_span,
+                EnforceTypeArguments::Yes,
                 None
             ),
             return err(warnings, errors),
@@ -459,9 +465,10 @@ impl ty::TyImplTrait {
 
         // type check the type that we are implementing for
         let implementing_for_type_id = check!(
-            ctx.resolve_type_without_self(
+            ctx.resolve(
                 type_engine.insert(decl_engine, type_implementing_for),
                 &type_implementing_for_span,
+                EnforceTypeArguments::Yes,
                 None
             ),
             return err(warnings, errors),
@@ -754,11 +761,6 @@ fn type_check_impl_method(
             return err(warnings, errors);
         }
     };
-
-    // replace instances of `TypeInfo::SelfType` with a fresh
-    // `TypeInfo::SelfType` to avoid replacing types in the stub trait
-    // declaration
-    impl_method_signature.replace_self_type(engines, self_type);
 
     // ensure this fn decl's parameters and signature lines up with the one
     // in the trait

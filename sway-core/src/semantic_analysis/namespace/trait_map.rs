@@ -575,13 +575,9 @@ impl TraitMap {
                     let type_mapping =
                         TypeSubstMap::from_superset_and_subset(type_engine, *map_type_id, *type_id);
                     let new_self_type = type_engine.insert(decl_engine, TypeInfo::SelfType);
-                    type_id.replace_self_type(engines, new_self_type);
                     let mut trait_methods = map_trait_methods.clone();
                     trait_methods.iter_mut().for_each(|(_, mut method_value)| {
                         method_value.type_subst_list.subst(&type_mapping, engines);
-                        method_value
-                            .type_subst_list
-                            .replace_self_type(engines, new_self_type);
                     });
                     trait_map.insert_inner(
                         map_trait_name.clone(),

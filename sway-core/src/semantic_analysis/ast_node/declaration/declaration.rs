@@ -30,7 +30,7 @@ impl ty::TyDeclaration {
                 is_mutable,
             }) => {
                 let type_ascription = check!(
-                    ctx.resolve_type_with_self(
+                    ctx.resolve(
                         type_engine.insert(decl_engine, type_ascription),
                         &type_ascription_span.clone().unwrap_or_else(|| name.span()),
                         EnforceTypeArguments::Yes,
@@ -88,7 +88,7 @@ impl ty::TyDeclaration {
                 span,
             }) => {
                 let type_ascription = check!(
-                    ctx.resolve_type_with_self(
+                    ctx.resolve(
                         type_engine.insert(decl_engine, type_ascription),
                         &span,
                         EnforceTypeArguments::No,
@@ -338,9 +338,10 @@ impl ty::TyDeclaration {
                 } in fields
                 {
                     let type_id = check!(
-                        ctx.resolve_type_without_self(
+                        ctx.resolve(
                             type_engine.insert(decl_engine, type_info),
                             &name.span(),
+                            EnforceTypeArguments::Yes,
                             None
                         ),
                         return err(warnings, errors),
