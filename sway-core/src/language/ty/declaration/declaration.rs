@@ -658,38 +658,33 @@ impl TyDeclaration {
                 );
                 visibility
             }
-            TyDeclaration::FunctionDeclaration(_, _)
-            | TyDeclaration::StructDeclaration(_, _)
-            | TyDeclaration::EnumDeclaration(_, _) => {
-                todo!()
+            StructDeclaration(decl_id, _) => {
+                let TyStructDeclaration { visibility, .. } = check!(
+                    CompileResult::from(decl_engine.get_struct(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility
             }
-            // StructDeclaration(decl_id) => {
-            //     let TyStructDeclaration { visibility, .. } = check!(
-            //         CompileResult::from(decl_engine.get_struct(decl_id.clone(), &decl_id.span())),
-            //         return err(warnings, errors),
-            //         warnings,
-            //         errors
-            //     );
-            //     visibility
-            // }
-            // EnumDeclaration(decl_id, _) => {
-            //     let TyEnumDeclaration { visibility, .. } = check!(
-            //         CompileResult::from(decl_engine.get_enum(decl_id.clone(), &decl_id.span())),
-            //         return err(warnings, errors),
-            //         warnings,
-            //         errors
-            //     );
-            //     visibility
-            // }
-            // FunctionDeclaration(decl_id) => {
-            //     let TyFunctionDeclaration { visibility, .. } = check!(
-            //         CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
-            //         return err(warnings, errors),
-            //         warnings,
-            //         errors
-            //     );
-            //     visibility
-            // }
+            EnumDeclaration(decl_id, _) => {
+                let TyEnumDeclaration { visibility, .. } = check!(
+                    CompileResult::from(decl_engine.get_enum(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility
+            }
+            FunctionDeclaration(decl_id, _) => {
+                let TyFunctionDeclaration { visibility, .. } = check!(
+                    CompileResult::from(decl_engine.get_function(decl_id.clone(), &decl_id.span())),
+                    return err(warnings, errors),
+                    warnings,
+                    errors
+                );
+                visibility
+            }
             GenericTypeForFunctionScope { .. }
             | ImplTrait { .. }
             | StorageDeclaration { .. }

@@ -12,7 +12,7 @@ mod engine_threading;
 pub mod ir_generation;
 pub mod language;
 mod metadata;
-mod monomorphization;
+mod monomorphize;
 pub mod semantic_analysis;
 pub mod source_map;
 pub mod transform;
