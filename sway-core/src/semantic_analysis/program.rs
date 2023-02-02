@@ -22,16 +22,14 @@ impl ty::TyProgram {
         parsed: &ParseProgram,
         initial_namespace: namespace::Module,
     ) -> CompileResult<Self> {
-        let mut namespace = Namespace::init_root(initial_namespace);
+        let mut namespace = Namespace::init_root(initial_namespace.clone());
         let ctx =
             TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
         let ParseProgram { root, kind } = parsed;
         let mod_span = root.tree.span.clone();
-        let mut mod_res = ty::TyModule::type_check(ctx, root);
-        if let Some(ref mut mod_res) = mod_res.value {
-            monomorphize::monomorphize(engines, mod_res);
-        }
-        mod_res.flat_map(|root| {
+        let mod_res = ty::TyModule::type_check(ctx, root);
+        mod_res.flat_map(|mut root| {
+            monomorphize::monomorphize(engines, &mut root);
             let res = Self::validate_root(engines, &root, kind.clone(), mod_span);
             res.map(|(kind, declarations, configurables)| Self {
                 kind,

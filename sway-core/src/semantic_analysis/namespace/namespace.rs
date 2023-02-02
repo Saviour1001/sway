@@ -1,5 +1,4 @@
 use crate::{
-    decl_engine::DeclId,
     engine_threading::*,
     error::*,
     language::{ty, CallPath},

@@ -1,27 +1,25 @@
+pub(crate) mod context;
 pub(crate) mod declaration;
 pub(crate) mod expression;
+pub(crate) mod module;
 pub(crate) mod node;
+
+use std::cell::RefCell;
 
 use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{language::ty, monomorphize::priv_prelude::*, Engines};
 
-pub(crate) fn gather_from_module(
-    handler: &Handler,
+use self::module::gather_from_root;
+
+pub(super) fn gather_constraints(
     engines: Engines<'_>,
+    handler: &Handler,
     module: &ty::TyModule,
 ) -> Result<Vec<Constraint>, ErrorEmitted> {
-    let mut constraints = module
-        .submodules_recursive()
-        .map(|(_, submod)| gather_from_module(handler, engines, &submod.module))
-        .collect::<Result<Vec<Vec<Constraint>>, ErrorEmitted>>()
-        .map(|v| v.into_iter().flatten().collect::<Vec<Constraint>>())?;
-    let node_constraints = module
-        .all_nodes
-        .iter()
-        .map(|node| gather_from_node(handler, engines, &node.content))
-        .collect::<Result<Vec<Vec<Constraint>>, ErrorEmitted>>()
-        .map(|v| v.into_iter().flatten().collect::<Vec<Constraint>>())?;
-    constraints.extend(node_constraints);
-    Ok(constraints)
+    let root_namespace = Namespace::init_root(&module.namespace);
+    let constraints = RefCell::new(vec![]);
+    let ctx = Context::from_root(&root_namespace, engines, &constraints);
+    gather_from_root(ctx, handler, module)?;
+    Ok(constraints.into_inner())
 }

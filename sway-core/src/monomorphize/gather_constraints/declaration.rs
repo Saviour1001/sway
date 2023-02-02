@@ -1,14 +1,14 @@
 use sway_error::handler::{ErrorEmitted, Handler};
 
-use crate::{language::ty, monomorphize::priv_prelude::*, Engines};
+use crate::{language::ty, monomorphize::priv_prelude::*};
 
 pub(crate) fn gather_from_decl(
+    ctx: Context,
     handler: &Handler,
-    engines: Engines<'_>,
     decl: &ty::TyDeclaration,
 ) -> Result<Vec<Constraint>, ErrorEmitted> {
     match decl {
-        ty::TyDeclaration::VariableDeclaration(_) => todo!(),
+        ty::TyDeclaration::VariableDeclaration(decl) => todo!(),
         ty::TyDeclaration::ConstantDeclaration(_) => todo!(),
         ty::TyDeclaration::FunctionDeclaration(_, _) => todo!(),
         ty::TyDeclaration::TraitDeclaration(_) => todo!(),
@@ -20,4 +20,12 @@ pub(crate) fn gather_from_decl(
         ty::TyDeclaration::ErrorRecovery(_) => Ok(vec![]),
         ty::TyDeclaration::StorageDeclaration(_) => todo!(),
     }
+}
+
+pub(crate) fn gather_from_var_decl(
+    ctx: Context,
+    handler: &Handler,
+    var_decl: &ty::TyVariableDeclaration,
+) -> Result<Vec<Constraint>, ErrorEmitted> {
+    todo!()
 }
