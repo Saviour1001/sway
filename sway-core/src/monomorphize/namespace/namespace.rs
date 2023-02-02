@@ -1,10 +1,12 @@
+use std::fmt;
+
 use sway_types::Ident;
 
 use crate::monomorphize::priv_prelude::*;
 
 /// The set of items that represent the namespace context passed throughout
 /// gathering the monomorphization constraints.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct Namespace<'a> {
     /// An absolute path from the `root` that represents the current module
     /// being gathered.
@@ -77,5 +79,11 @@ impl<'a> std::ops::Deref for Namespace<'a> {
 impl<'a> std::ops::DerefMut for Namespace<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.module_mut()
+    }
+}
+
+impl fmt::Debug for Namespace<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.root)
     }
 }

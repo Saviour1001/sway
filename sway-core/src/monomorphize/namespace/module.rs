@@ -1,13 +1,15 @@
+use std::fmt;
+
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{Ident, Span, Spanned};
 
-use crate::{monomorphize::priv_prelude::*, namespace};
+use crate::{monomorphize::priv_prelude::*, namespace, type_system::*};
 
 /// A single [Module] within a Sway project.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct Module<'a> {
     /// Name of the module, package name for root module, library name for other
     /// modules. Library name used is the same as declared in `library name;`.
@@ -18,6 +20,10 @@ pub(crate) struct Module<'a> {
     pub(crate) submodules: im::OrdMap<ModuleName, Module<'a>>,
 
     pub(crate) typed: &'a namespace::Module,
+
+    /// Local symbols not indexable by a module.
+    /// e.g. variable declarations inside of a function declaration.
+    pub(crate) local_values: im::OrdMap<Ident, TypeId>,
 
     pub(crate) constraints: im::Vector<Constraint>,
 }
@@ -58,6 +64,14 @@ impl<'a> Module<'a> {
             None => Err(handler.emit_err(module_not_found(path))),
         }
     }
+
+    pub(crate) fn add_local_value(&mut self, name: Ident, type_id: TypeId) -> Option<TypeId> {
+        self.local_values.insert(name, type_id)
+    }
+
+    pub(crate) fn add_constraint(&mut self, constraint: Constraint) {
+        self.constraints.push_back(constraint);
+    }
 }
 
 impl<'a> std::ops::Index<&Path> for Module<'a> {
@@ -91,8 +105,15 @@ impl<'a, 'b: 'a> From<&'b namespace::Module> for Module<'a> {
                 .map(|(name, submod)| (name, Module::from(submod)))
                 .collect(),
             typed: value,
+            local_values: im::OrdMap::new(),
             constraints: im::Vector::new(),
         }
+    }
+}
+
+impl fmt::Debug for Module<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.constraints)
     }
 }
 

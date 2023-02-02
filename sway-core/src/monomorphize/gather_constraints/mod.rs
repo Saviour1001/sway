@@ -1,7 +1,9 @@
+pub(crate) mod code_block;
 pub(crate) mod declaration;
 pub(crate) mod expression;
 pub(crate) mod module;
 pub(crate) mod node;
+pub(crate) mod type_annotations;
 
 use sway_error::handler::{ErrorEmitted, Handler};
 

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, sync::Arc};
+use std::cell::RefCell;
 
 use sway_types::Ident;
 
@@ -65,6 +65,10 @@ impl<'a> Context<'a> {
             decl_engine: self.decl_engine,
             constraints: self.constraints,
         }
+    }
+
+    pub(crate) fn add_constraint(&self, constraint: Constraint) {
+        self.constraints.borrow_mut().push(constraint);
     }
 }
 

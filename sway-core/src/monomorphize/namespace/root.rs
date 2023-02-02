@@ -1,3 +1,5 @@
+use std::fmt;
+
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Ident;
 
@@ -7,7 +9,7 @@ use crate::{
 };
 
 /// The root module, from which all other modules can be accessed.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub(crate) struct Root<'a> {
     pub(crate) module: Module<'a>,
 }
@@ -77,5 +79,11 @@ impl<'a> From<Module<'a>> for Root<'a> {
 impl<'a> From<Namespace<'a>> for Root<'a> {
     fn from(namespace: Namespace<'a>) -> Root<'a> {
         namespace.root
+    }
+}
+
+impl fmt::Debug for Root<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.module)
     }
 }

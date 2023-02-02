@@ -1,3 +1,5 @@
+use std::fmt;
+
 use sway_types::Ident;
 
 use crate::{decl_engine::*, monomorphize::priv_prelude::*, Engines, TypeEngine};
@@ -13,6 +15,8 @@ pub(crate) struct Context<'a, 'b: 'a> {
 
     /// The declaration engine holds declarations.
     pub(crate) decl_engine: &'a DeclEngine,
+
+    pub(crate) constraints: im::Vector<Constraint>,
 }
 
 impl<'a, 'b> Context<'a, 'b> {
@@ -68,5 +72,11 @@ impl<'a, 'b> Context<'a, 'b> {
             Engines::new(self.type_engine, self.decl_engine),
         );
         with_submod_ctx(submod_ctx)
+    }
+}
+
+impl fmt::Debug for Context<'_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.namespace)
     }
 }
