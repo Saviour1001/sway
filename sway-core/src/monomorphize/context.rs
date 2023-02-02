@@ -119,26 +119,3 @@ impl<'a> std::ops::Deref for Namespace<'a> {
         self.module()
     }
 }
-
-/// A namespace session type representing gathering constraints of a submodule.
-///
-/// This type allows for re-using the parent's [Namespace] in order to provide
-/// access to the `root` and `init` throughout gathering constraints of the
-/// submodule, but with an updated `mod_path` to represent the submodule's
-/// path.
-pub(crate) struct SubmoduleNamespace<'a> {
-    pub(crate) namespace: &'a Namespace<'a>,
-}
-
-impl<'a> From<&'a Namespace<'a>> for SubmoduleNamespace<'a> {
-    fn from(namespace: &'a Namespace<'a>) -> Self {
-        SubmoduleNamespace { namespace }
-    }
-}
-
-impl<'a> std::ops::Deref for SubmoduleNamespace<'a> {
-    type Target = Namespace<'a>;
-    fn deref(&self) -> &Self::Target {
-        self.namespace
-    }
-}

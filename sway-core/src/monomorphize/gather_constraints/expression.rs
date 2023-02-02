@@ -6,6 +6,6 @@ pub(crate) fn gather_from_exp(
     ctx: Context,
     handler: &Handler,
     exp: &ty::TyExpression,
-) -> Result<Vec<Constraint>, ErrorEmitted> {
+) -> Result<(), ErrorEmitted> {
     todo!()
 }

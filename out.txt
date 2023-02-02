@@ -1,0 +1,122 @@
+  Creating a new `Forc.lock` file. (Cause: lock file did not match manifest)
+[31m  Removing core[0m
+   Created new lock file at /Users/emilyherbert/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/tuple_access/Forc.lock
+Module {
+    submodules: {},
+    items: Items {
+        symbols: {
+            BaseIdent {
+                name_override_opt: None,
+                span: Span {
+                    src (ptr): 0x00007f9a017051b0,
+                    path: Some(
+                        "/Users/emilyherbert/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/tuple_access/src/main.sw",
+                    ),
+                    start: 12,
+                    end: 24,
+                    as_str(): "gimme_a_pair",
+                },
+                is_raw_ident: false,
+            }: FunctionDeclaration(
+                DeclId(
+                    0,
+                    Span {
+                        src (ptr): 0x00007f9a017051b0,
+                        path: Some(
+                            "/Users/emilyherbert/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/tuple_access/src/main.sw",
+                        ),
+                        start: 9,
+                        end: 61,
+                        as_str(): "fn gimme_a_pair() -> (u32, u64) {\n    (1u32, 2u64)\n}",
+                    },
+                ),
+                TypeSubstList {
+                    list: [],
+                },
+            ),
+            BaseIdent {
+                name_override_opt: None,
+                span: Span {
+                    src (ptr): 0x00007f9a017051b0,
+                    path: Some(
+                        "/Users/emilyherbert/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/tuple_access/src/main.sw",
+                    ),
+                    start: 131,
+                    end: 135,
+                    as_str(): "main",
+                },
+                is_raw_ident: false,
+            }: FunctionDeclaration(
+                DeclId(
+                    2,
+                    Span {
+                        src (ptr): 0x00007f9a017051b0,
+                        path: Some(
+                            "/Users/emilyherbert/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/tuple_access/src/main.sw",
+                        ),
+                        start: 128,
+                        end: 445,
+                        as_str(): "fn main() -> u32 {\n    let (foo, bar) = gimme_a_pair();\n    let (x, y): (u32, bool) = (10, true);\n    //let (x, y): (u32, _) = (42, true); // this generates a parsing error\n    test(true, false);\n    test (42, 42);\n    let (a, (b, (c, d) ) ): (u64, (u32, (bool, str[2]) ) ) = (42u64, (42u32, (true, \"ok\") ) );\n    a\n}",
+                    },
+                ),
+                TypeSubstList {
+                    list: [],
+                },
+            ),
+            BaseIdent {
+                name_override_opt: None,
+                span: Span {
+                    src (ptr): 0x00007f9a017051b0,
+                    path: Some(
+                        "/Users/emilyherbert/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/tuple_access/src/main.sw",
+                    ),
+                    start: 66,
+                    end: 70,
+                    as_str(): "test",
+                },
+                is_raw_ident: false,
+            }: FunctionDeclaration(
+                DeclId(
+                    1,
+                    Span {
+                        src (ptr): 0x00007f9a017051b0,
+                        path: Some(
+                            "/Users/emilyherbert/fuel/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/tuple_access/src/main.sw",
+                        ),
+                        start: 63,
+                        end: 125,
+                        as_str(): "fn test<T, E>(a: T, b: E) {\n    let (x, y): (T, E) = (a, b);\n}",
+                    },
+                ),
+                TypeSubstList {
+                    list: [
+                        T: TypeId(19),
+                        E: TypeId(21),
+                    ],
+                },
+            ),
+        },
+        implemented_traits: TraitMap {
+            trait_impls: [],
+        },
+        use_synonyms: {},
+        use_aliases: {},
+        declared_storage: None,
+        type_subst_stack: [],
+    },
+    name: Some(
+        BaseIdent {
+            name_override_opt: Some(
+                "tuple_access",
+            ),
+            span: Span {
+                src (ptr): 0x0000600003a84160,
+                path: None,
+                start: 0,
+                end: 0,
+                as_str(): "",
+            },
+            is_raw_ident: false,
+        },
+    ),
+}
