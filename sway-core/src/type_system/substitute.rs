@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     collections::BTreeMap,
     fmt,
     hash::Hasher,
@@ -178,31 +179,22 @@ impl std::iter::FromIterator<TypeParameter> for TypeSubstList {
     }
 }
 
-// impl std::iter::IntoIterator for TypeSubstList {
-//     type Item = TypeParameter;
-//     type IntoIter = std::vec::IntoIter<TypeParameter>;
-
-//     fn into_iter(self) -> Self::IntoIter {
-//         self.list.into_iter()
-//     }
-// }
-
 impl EqWithEngines for TypeSubstList {}
 impl PartialEqWithEngines for TypeSubstList {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
-        self.list.len() == other.list.len()
-            && self
-                .list
-                .iter()
-                .zip(other.list.iter())
-                .map(|(x, y)| x.eq(y, type_engine))
-                .all(|x| x)
+        self.list.eq(&other.list, type_engine)
     }
 }
 
 impl HashWithEngines for TypeSubstList {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         self.list.hash(state, type_engine);
+    }
+}
+
+impl OrdWithEngines for TypeSubstList {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        self.list.cmp(&other.list, type_engine)
     }
 }
 

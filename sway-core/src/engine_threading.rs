@@ -87,6 +87,24 @@ impl<T: PartialEqWithEngines> PartialEq for WithEngines<'_, T> {
 
 impl<T: EqWithEngines> Eq for WithEngines<'_, T> {}
 
+impl<T: OrdWithEngines> PartialOrd for WithEngines<'_, T>
+where
+    T: PartialEqWithEngines,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.thing.cmp(&other.thing, self.engines.te()))
+    }
+}
+
+impl<T: OrdWithEngines> Ord for WithEngines<'_, T>
+where
+    T: EqWithEngines,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.thing.cmp(&other.thing, self.engines.te())
+    }
+}
+
 pub(crate) trait DisplayWithEngines {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: Engines<'_>) -> fmt::Result;
 }
@@ -170,6 +188,17 @@ impl<T: OrdWithEngines + ?Sized> OrdWithEngines for &T {
     }
 }
 
+impl<T: OrdWithEngines> OrdWithEngines for Option<T> {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        match (self, other) {
+            (Some(x), Some(y)) => x.cmp(y, type_engine),
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => Ordering::Equal,
+        }
+    }
+}
+
 impl<T: EqWithEngines> EqWithEngines for Option<T> {}
 impl<T: PartialEqWithEngines> PartialEqWithEngines for Option<T> {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
@@ -193,10 +222,12 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for [T] {
 }
 impl<T: OrdWithEngines> OrdWithEngines for [T] {
     fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
-        self.iter()
-            .zip(other.iter())
-            .map(|(x, y)| x.cmp(y, type_engine))
-            .find(|o| o.is_ne())
-            .unwrap_or_else(|| self.len().cmp(&other.len()))
+        self.len().cmp(&other.len()).then_with(|| {
+            self.iter()
+                .zip(other.iter())
+                .fold(Ordering::Equal, |acc, (l, r)| {
+                    acc.then_with(|| l.cmp(r, type_engine))
+                })
+        })
     }
 }

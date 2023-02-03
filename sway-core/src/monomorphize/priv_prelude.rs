@@ -6,4 +6,6 @@ pub(super) use super::{
         expression::gather_from_exp, gather_constraints, node::gather_from_node,
         type_annotations::gather_from_type_param,
     },
+    instructions::Instructions,
+    solver::Solver,
 };

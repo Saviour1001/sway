@@ -11,6 +11,7 @@ type PathBuf = Vec<Ident>;
 
 /// Contextual state tracked and accumulated throughout gathering the trait
 /// constraints.
+#[derive(Clone, Copy)]
 pub(crate) struct Context<'a> {
     /// The namespace context accumulated throughout type-checking.
     pub(crate) namespace: &'a Namespace<'a>,
@@ -110,7 +111,7 @@ impl<'a> Namespace<'a> {
         Self { root, mod_path }
     }
 
-    pub(crate) fn new_with_module(&self, module: &'a namespace::Module) -> Namespace<'a> {
+    pub(crate) fn new_with_module(&self, module: &namespace::Module) -> Namespace<'_> {
         let mut mod_path = self.mod_path.clone();
         if let Some(name) = &module.name {
             mod_path.push(name.clone());
@@ -133,21 +134,3 @@ impl<'a> std::ops::Deref for Namespace<'a> {
         self.module()
     }
 }
-
-// #[derive(Clone)]
-// struct ConstraintHasher<'a> {
-//     type_engine: &'a TypeEngine,
-// }
-// impl<'a> BuildHasher for ConstraintHasher<'a> {
-//     type Hasher = DefaultHasher;
-
-//     fn build_hasher(&self) -> DefaultHasher {
-//         DefaultHasher::new()
-//     }
-
-//     fn hash_one<T: std::hash::Hash>(&self, x: T) -> u64
-//         where
-//             Self: Sized {
-
-//     }
-// }

@@ -9,12 +9,13 @@ use sway_error::error::CompileError;
 use sway_types::{integer_bits::IntegerBits, span::Span, Spanned};
 
 use std::{
+    cmp::Ordering,
     collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
 };
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub enum AbiName {
     Deferred,
     Known(CallPath),
@@ -151,39 +152,36 @@ pub enum TypeInfo {
     RawUntypedSlice,
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl HashWithEngines for TypeInfo {
     fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
         match self {
             TypeInfo::Str(len) => {
-                state.write_u8(1);
+                state.write_u8(self.discriminant_value());
                 len.hash(state);
             }
             TypeInfo::UnsignedInteger(bits) => {
-                state.write_u8(2);
+                state.write_u8(self.discriminant_value());
                 bits.hash(state);
             }
             TypeInfo::Numeric => {
-                state.write_u8(3);
+                state.write_u8(self.discriminant_value());
             }
             TypeInfo::Boolean => {
-                state.write_u8(4);
+                state.write_u8(self.discriminant_value());
             }
             TypeInfo::Tuple(fields) => {
-                state.write_u8(5);
+                state.write_u8(self.discriminant_value());
                 fields.hash(state, type_engine);
             }
             TypeInfo::B256 => {
-                state.write_u8(6);
+                state.write_u8(self.discriminant_value());
             }
             TypeInfo::Enum {
                 name,
                 decl_id,
                 subst_list,
             } => {
-                state.write_u8(7);
+                state.write_u8(self.discriminant_value());
                 name.hash(state);
                 decl_id.hash(state);
                 subst_list.hash(state, type_engine);
@@ -193,13 +191,13 @@ impl HashWithEngines for TypeInfo {
                 decl_id,
                 subst_list,
             } => {
-                state.write_u8(7);
+                state.write_u8(self.discriminant_value());
                 name.hash(state);
                 decl_id.hash(state);
                 subst_list.hash(state, type_engine);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
-                state.write_u8(9);
+                state.write_u8(self.discriminant_value());
                 abi_name.hash(state);
                 let address = address
                     .as_ref()
@@ -208,22 +206,22 @@ impl HashWithEngines for TypeInfo {
                 address.hash(state);
             }
             TypeInfo::Contract => {
-                state.write_u8(10);
+                state.write_u8(self.discriminant_value());
             }
             TypeInfo::ErrorRecovery => {
-                state.write_u8(11);
+                state.write_u8(self.discriminant_value());
             }
             TypeInfo::Unknown => {
-                state.write_u8(12);
+                state.write_u8(self.discriminant_value());
             }
             TypeInfo::SelfType => {
-                state.write_u8(13);
+                state.write_u8(self.discriminant_value());
             }
             TypeInfo::UnknownGeneric {
                 name,
                 trait_constraints,
             } => {
-                state.write_u8(14);
+                state.write_u8(self.discriminant_value());
                 name.hash(state);
                 trait_constraints.hash(state, type_engine);
             }
@@ -231,40 +229,37 @@ impl HashWithEngines for TypeInfo {
                 name,
                 type_arguments,
             } => {
-                state.write_u8(15);
+                state.write_u8(self.discriminant_value());
                 name.hash(state);
                 type_arguments.as_deref().hash(state, type_engine);
             }
             TypeInfo::Storage { fields } => {
-                state.write_u8(16);
+                state.write_u8(self.discriminant_value());
                 fields.hash(state, type_engine);
             }
             TypeInfo::Array(elem_ty, count) => {
-                state.write_u8(17);
+                state.write_u8(self.discriminant_value());
                 elem_ty.hash(state, type_engine);
                 count.hash(state);
             }
             TypeInfo::RawUntypedPtr => {
-                state.write_u8(18);
+                state.write_u8(self.discriminant_value());
             }
             TypeInfo::RawUntypedSlice => {
-                state.write_u8(19);
+                state.write_u8(self.discriminant_value());
             }
             TypeInfo::Placeholder(ty) => {
-                state.write_u8(20);
+                state.write_u8(self.discriminant_value());
                 ty.hash(state, type_engine);
             }
             TypeInfo::TypeParam(n) => {
-                state.write_u8(21);
+                state.write_u8(self.discriminant_value());
                 n.hash(state);
             }
         }
     }
 }
 
-// NOTE: Hash and PartialEq must uphold the invariant:
-// k1 == k2 -> hash(k1) == hash(k2)
-// https://doc.rust-lang.org/std/collections/struct.HashMap.html
 impl EqWithEngines for TypeInfo {}
 impl PartialEqWithEngines for TypeInfo {
     fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
@@ -287,6 +282,7 @@ impl PartialEqWithEngines for TypeInfo {
                 },
             ) => l == r && ltc.eq(rtc, type_engine),
             (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, type_engine),
+            (Self::TypeParam(l), Self::TypeParam(r)) => l == r,
             (
                 Self::Custom {
                     name: l_name,
@@ -464,6 +460,93 @@ impl DisplayWithEngines for TypeInfo {
     }
 }
 
+impl OrdWithEngines for TypeInfo {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        match (self, other) {
+            (
+                Self::UnknownGeneric {
+                    name: l,
+                    trait_constraints: ltc,
+                },
+                Self::UnknownGeneric {
+                    name: r,
+                    trait_constraints: rtc,
+                },
+            ) => l.cmp(r).then_with(|| ltc.cmp(rtc, type_engine)),
+            (Self::Placeholder(l), Self::Placeholder(r)) => l.cmp(r, type_engine),
+            (Self::TypeParam(l), Self::TypeParam(r)) => l.cmp(r),
+            (
+                Self::Custom {
+                    name: l_name,
+                    type_arguments: l_type_args,
+                },
+                Self::Custom {
+                    name: r_name,
+                    type_arguments: r_type_args,
+                },
+            ) => l_name.cmp(r_name).then_with(|| {
+                l_type_args
+                    .as_deref()
+                    .cmp(&r_type_args.as_deref(), type_engine)
+            }),
+            (Self::Str(l), Self::Str(r)) => l.val().cmp(&r.val()),
+            (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l.cmp(r),
+            (
+                Self::Enum {
+                    name: l_name,
+                    decl_id: l_decl_id,
+                    subst_list: l_subst_list,
+                },
+                Self::Enum {
+                    name: r_name,
+                    decl_id: r_decl_id,
+                    subst_list: r_subst_list,
+                },
+            ) => l_name
+                .cmp(r_name)
+                .then_with(|| l_decl_id.cmp(r_decl_id))
+                .then_with(|| l_subst_list.cmp(r_subst_list, type_engine)),
+            (
+                Self::Struct {
+                    name: l_name,
+                    decl_id: l_decl_id,
+                    subst_list: l_subst_list,
+                },
+                Self::Struct {
+                    name: r_name,
+                    decl_id: r_decl_id,
+                    subst_list: r_subst_list,
+                },
+            ) => l_name
+                .cmp(r_name)
+                .then_with(|| l_decl_id.cmp(r_decl_id))
+                .then_with(|| l_subst_list.cmp(r_subst_list, type_engine)),
+            (Self::Tuple(l), Self::Tuple(r)) => l.cmp(r, type_engine),
+            (
+                Self::ContractCaller {
+                    abi_name: l_abi_name,
+                    address: l_address,
+                },
+                Self::ContractCaller {
+                    abi_name: r_abi_name,
+                    address: r_address,
+                },
+            ) => {
+                // NOTE: we assume all contract callers are unique
+                l_abi_name.cmp(r_abi_name)
+            }
+            (Self::Array(l0, l1), Self::Array(r0, r1)) => type_engine
+                .get(l0.type_id)
+                .cmp(&type_engine.get(r0.type_id), type_engine)
+                .then_with(|| l1.val().cmp(&r1.val())),
+            (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
+                l_fields.cmp(r_fields, type_engine)
+            }
+            (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
+        }
+    }
+}
+
 impl UnconstrainedTypeParameters for TypeInfo {
     fn type_parameter_is_unconstrained(
         &self,
@@ -583,6 +666,32 @@ impl UnconstrainedTypeParameters for TypeInfo {
 }
 
 impl TypeInfo {
+    fn discriminant_value(&self) -> u8 {
+        match self {
+            TypeInfo::Unknown => 0,
+            TypeInfo::UnknownGeneric { .. } => 1,
+            TypeInfo::Placeholder(_) => 2,
+            TypeInfo::TypeParam(_) => 3,
+            TypeInfo::Str(_) => 4,
+            TypeInfo::UnsignedInteger(_) => 5,
+            TypeInfo::Enum { .. } => 6,
+            TypeInfo::Struct { .. } => 7,
+            TypeInfo::Boolean => 8,
+            TypeInfo::Tuple(_) => 9,
+            TypeInfo::ContractCaller { .. } => 10,
+            TypeInfo::Custom { .. } => 11,
+            TypeInfo::SelfType => 12,
+            TypeInfo::B256 => 13,
+            TypeInfo::Numeric => 14,
+            TypeInfo::Contract => 15,
+            TypeInfo::ErrorRecovery => 16,
+            TypeInfo::Array(_, _) => 17,
+            TypeInfo::Storage { .. } => 18,
+            TypeInfo::RawUntypedPtr => 19,
+            TypeInfo::RawUntypedSlice => 20,
+        }
+    }
+
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,

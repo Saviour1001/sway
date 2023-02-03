@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    cmp::Ordering,
+    hash::{Hash, Hasher},
+};
 
 use sway_types::Ident;
 
@@ -122,6 +125,44 @@ impl HashWithEngines for Constraint {
                     .iter()
                     .for_each(|arg| type_engine.get(*arg).hash(state, type_engine));
             }
+        }
+    }
+}
+
+impl OrdWithEngines for Constraint {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        match (self, other) {
+            (Constraint::Ty(l), Constraint::Ty(r)) => {
+                type_engine.get(*l).cmp(&type_engine.get(*r), type_engine)
+            }
+            (
+                Constraint::FnCall {
+                    call_path: lcp,
+                    decl_id: ldi,
+                    subst_list: lsl,
+                    arguments: la,
+                },
+                Constraint::FnCall {
+                    call_path: rcp,
+                    decl_id: rdi,
+                    subst_list: rsl,
+                    arguments: ra,
+                },
+            ) => lcp
+                .cmp(rcp)
+                .then_with(|| ldi.cmp(rdi))
+                .then_with(|| lsl.cmp(rsl, type_engine))
+                .then_with(|| la.len().cmp(&ra.len()))
+                .then_with(|| {
+                    la.iter()
+                        .zip(ra.iter())
+                        .fold(Ordering::Equal, |acc, (l, r)| {
+                            acc.then_with(|| {
+                                type_engine.get(*l).cmp(&type_engine.get(*r), type_engine)
+                            })
+                        })
+                }),
+            (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
     }
 }

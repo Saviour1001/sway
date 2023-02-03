@@ -11,6 +11,7 @@ use sway_error::error::CompileError;
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{
+    cmp::Ordering,
     collections::BTreeMap,
     fmt,
     hash::{Hash, Hasher},
@@ -43,6 +44,22 @@ impl PartialEqWithEngines for TypeParameter {
             && self
                 .trait_constraints
                 .eq(&other.trait_constraints, type_engine)
+    }
+}
+
+impl OrdWithEngines for TypeParameter {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        self.name_ident
+            .cmp(&other.name_ident)
+            .then_with(|| {
+                type_engine
+                    .get(self.type_id)
+                    .cmp(&type_engine.get(other.type_id), type_engine)
+            })
+            .then_with(|| {
+                self.trait_constraints
+                    .cmp(&other.trait_constraints, type_engine)
+            })
     }
 }
 
