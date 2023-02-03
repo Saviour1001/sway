@@ -1,8 +1,11 @@
-use std::cell::RefCell;
+use hashbrown::{hash_map::RawEntryMut, HashMap};
+use std::sync::RwLock;
 
 use sway_types::Ident;
 
-use crate::{decl_engine::*, monomorphize::priv_prelude::*, namespace, Engines, TypeEngine};
+use crate::{
+    decl_engine::*, engine_threading::*, monomorphize::priv_prelude::*, namespace, TypeEngine,
+};
 
 type PathBuf = Vec<Ident>;
 
@@ -19,7 +22,10 @@ pub(crate) struct Context<'a> {
     pub(crate) decl_engine: &'a DeclEngine,
 
     /// The list of constraints.
-    constraints: &'a RefCell<Vec<Constraint>>,
+    /// NOTE: This only needs to be a [HashSet][hashbrown::HashSet], but there
+    /// isn't the right method implement on that data type for what we need, so
+    /// instead we use a dummy [HashMap][hashbrown::HashMap].
+    constraints: &'a RwLock<HashMap<Constraint, usize>>,
 }
 
 impl<'a> Context<'a> {
@@ -27,7 +33,7 @@ impl<'a> Context<'a> {
     pub(crate) fn from_root(
         root_namespace: &'a Namespace<'a>,
         engines: Engines<'a>,
-        constraints: &'a RefCell<Vec<Constraint>>,
+        constraints: &'a RwLock<HashMap<Constraint, usize>>,
     ) -> Context<'a> {
         Self::from_module_namespace(root_namespace, engines, constraints)
     }
@@ -35,7 +41,7 @@ impl<'a> Context<'a> {
     fn from_module_namespace(
         namespace: &'a Namespace<'a>,
         engines: Engines<'a>,
-        constraints: &'a RefCell<Vec<Constraint>>,
+        constraints: &'a RwLock<HashMap<Constraint, usize>>,
     ) -> Self {
         let (type_engine, decl_engine) = engines.unwrap();
         Self {
@@ -68,7 +74,20 @@ impl<'a> Context<'a> {
     }
 
     pub(crate) fn add_constraint(&self, constraint: Constraint) {
-        self.constraints.borrow_mut().push(constraint);
+        let mut constraints = self.constraints.write().unwrap();
+        let hash_builder = constraints.hasher().clone();
+        let constraint_hash = make_hasher(&hash_builder, self.type_engine)(&constraint);
+        let raw_entry = constraints
+            .raw_entry_mut()
+            .from_hash(constraint_hash, |x| x.eq(&constraint, self.type_engine));
+        if let RawEntryMut::Vacant(v) = raw_entry {
+            v.insert_with_hasher(
+                constraint_hash,
+                constraint,
+                0,
+                make_hasher(&hash_builder, self.type_engine),
+            );
+        }
     }
 }
 
@@ -76,10 +95,6 @@ impl<'a> Context<'a> {
 /// gathering the trait constraints.
 #[derive(Clone, Debug)]
 pub(crate) struct Namespace<'a> {
-    /// An immutable namespace that consists of the names that should always be
-    /// present, no matter what module or scope we are currently checking.
-    init: &'a namespace::Module,
-
     /// The `root` of the project namespace.
     pub(crate) root: &'a namespace::Module,
 
@@ -90,13 +105,9 @@ pub(crate) struct Namespace<'a> {
 
 impl<'a> Namespace<'a> {
     /// Initialize the namespace at its root from the given initial namespace.
-    pub(crate) fn init_root(init: &'a namespace::Module) -> Namespace<'a> {
+    pub(crate) fn init_root(root: &'a namespace::Module) -> Namespace<'a> {
         let mod_path = vec![];
-        Self {
-            init,
-            root: init,
-            mod_path,
-        }
+        Self { root, mod_path }
     }
 
     pub(crate) fn new_with_module(&self, module: &'a namespace::Module) -> Namespace<'a> {
@@ -105,7 +116,6 @@ impl<'a> Namespace<'a> {
             mod_path.push(name.clone());
         }
         Namespace {
-            init: module,
             root: self.root,
             mod_path,
         }
@@ -123,3 +133,21 @@ impl<'a> std::ops::Deref for Namespace<'a> {
         self.module()
     }
 }
+
+// #[derive(Clone)]
+// struct ConstraintHasher<'a> {
+//     type_engine: &'a TypeEngine,
+// }
+// impl<'a> BuildHasher for ConstraintHasher<'a> {
+//     type Hasher = DefaultHasher;
+
+//     fn build_hasher(&self) -> DefaultHasher {
+//         DefaultHasher::new()
+//     }
+
+//     fn hash_one<T: std::hash::Hash>(&self, x: T) -> u64
+//         where
+//             Self: Sized {
+
+//     }
+// }

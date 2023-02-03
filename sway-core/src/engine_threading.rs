@@ -80,8 +80,8 @@ impl<T: HashWithEngines> Hash for WithEngines<'_, T> {
 }
 
 impl<T: PartialEqWithEngines> PartialEq for WithEngines<'_, T> {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.thing.eq(&rhs.thing, self.engines.te())
+    fn eq(&self, other: &Self) -> bool {
+        self.thing.eq(&other.thing, self.engines.te())
     }
 }
 
@@ -155,7 +155,7 @@ pub trait PartialEqWithEngines {
 }
 
 pub trait OrdWithEngines {
-    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> Ordering;
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering;
 }
 
 impl<T: EqWithEngines + ?Sized> EqWithEngines for &T {}
@@ -165,8 +165,8 @@ impl<T: PartialEqWithEngines + ?Sized> PartialEqWithEngines for &T {
     }
 }
 impl<T: OrdWithEngines + ?Sized> OrdWithEngines for &T {
-    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> Ordering {
-        (*self).cmp(*rhs, type_engine)
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
+        (*self).cmp(*other, type_engine)
     }
 }
 
@@ -192,11 +192,11 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for [T] {
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for [T] {
-    fn cmp(&self, rhs: &Self, type_engine: &TypeEngine) -> Ordering {
+    fn cmp(&self, other: &Self, type_engine: &TypeEngine) -> Ordering {
         self.iter()
-            .zip(rhs.iter())
+            .zip(other.iter())
             .map(|(x, y)| x.cmp(y, type_engine))
             .find(|o| o.is_ne())
-            .unwrap_or_else(|| self.len().cmp(&rhs.len()))
+            .unwrap_or_else(|| self.len().cmp(&other.len()))
     }
 }

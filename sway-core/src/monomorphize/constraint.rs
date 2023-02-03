@@ -1,29 +1,44 @@
+use std::hash::{Hash, Hasher};
+
 use sway_types::Ident;
 
 use crate::{
     decl_engine::DeclId,
+    engine_threading::*,
     language::{ty, CallPath},
     type_system::*,
 };
 
 #[derive(Debug, Clone)]
 pub(crate) enum Constraint {
-    // VarDecl {
-    //     name: Ident,
-    //     return_type: TypeId,
-    // },
-    // FnDecl {
-    //     name: Ident,
-    //     type_params: Vec<(Ident, TypeId)>,
-    //     params: Vec<(Ident, TypeId)>,
-    //     return_type: TypeId,
-    // },
+    Ty(TypeId),
     FnCall {
         call_path: CallPath,
         decl_id: DeclId,
         subst_list: TypeSubstList,
         arguments: Vec<TypeId>,
     },
+}
+
+impl Constraint {
+    fn discriminant_value(&self) -> u8 {
+        match self {
+            Constraint::Ty(_) => 0,
+            Constraint::FnCall { .. } => 1,
+        }
+    }
+}
+
+impl From<&TypeId> for Constraint {
+    fn from(value: &TypeId) -> Self {
+        Constraint::Ty(*value)
+    }
+}
+
+impl From<TypeId> for Constraint {
+    fn from(value: TypeId) -> Self {
+        Constraint::Ty(value)
+    }
 }
 
 impl From<&ty::TyExpressionVariant> for Constraint {
@@ -50,36 +65,63 @@ fn args_helper(args: &[(Ident, ty::TyExpression)]) -> Vec<TypeId> {
     args.iter().map(|(_, exp)| exp.return_type).collect()
 }
 
-// impl From<&ty::TyVariableDeclaration> for Constraint {
-//     fn from(value: &ty::TyVariableDeclaration) -> Self {
-//         Constraint::VarDecl {
-//             name: value.name.clone(),
-//             return_type: value.return_type,
-//         }
-//     }
-// }
+impl EqWithEngines for Constraint {}
+impl PartialEqWithEngines for Constraint {
+    fn eq(&self, other: &Self, type_engine: &TypeEngine) -> bool {
+        match (self, other) {
+            (Constraint::Ty(l), Constraint::Ty(r)) => {
+                type_engine.get(*l).eq(&type_engine.get(*r), type_engine)
+            }
+            (
+                Constraint::FnCall {
+                    call_path: lcp,
+                    decl_id: ldi,
+                    subst_list: lsl,
+                    arguments: la,
+                },
+                Constraint::FnCall {
+                    call_path: rcp,
+                    decl_id: rdi,
+                    subst_list: rsl,
+                    arguments: ra,
+                },
+            ) => {
+                lcp == rcp
+                    && ldi == rdi
+                    && lsl.eq(rsl, type_engine)
+                    && la.len() == ra.len()
+                    && la
+                        .iter()
+                        .zip(ra.iter())
+                        .map(|(l, r)| type_engine.get(*l).eq(&type_engine.get(*r), type_engine))
+                        .all(|b| b)
+            }
+            _ => false,
+        }
+    }
+}
 
-// impl From<&ty::TyFunctionDeclaration> for Constraint {
-//     fn from(value: &ty::TyFunctionDeclaration) -> Self {
-//         Constraint::FnDecl {
-//             name: value.name.clone(),
-//             type_params: type_params_helper(&value.type_parameters),
-//             params: fn_params_helper(&value.parameters),
-//             return_type: value.return_type,
-//         }
-//     }
-// }
-
-// fn type_params_helper(type_params: &[TypeParameter]) -> Vec<(Ident, TypeId)> {
-//     type_params
-//         .iter()
-//         .map(|type_param| (type_param.name_ident.clone(), type_param.type_id))
-//         .collect()
-// }
-
-// fn fn_params_helper(params: &[ty::TyFunctionParameter]) -> Vec<(Ident, TypeId)> {
-//     params
-//         .iter()
-//         .map(|param| (param.name.clone(), param.type_id))
-//         .collect()
-// }
+impl HashWithEngines for Constraint {
+    fn hash<H: Hasher>(&self, state: &mut H, type_engine: &TypeEngine) {
+        match self {
+            Constraint::Ty(type_id) => {
+                state.write_u8(self.discriminant_value());
+                type_engine.get(*type_id).hash(state, type_engine);
+            }
+            Constraint::FnCall {
+                call_path,
+                decl_id,
+                subst_list,
+                arguments,
+            } => {
+                state.write_u8(self.discriminant_value());
+                call_path.hash(state);
+                decl_id.hash(state);
+                subst_list.hash(state, type_engine);
+                arguments
+                    .iter()
+                    .for_each(|arg| type_engine.get(*arg).hash(state, type_engine));
+            }
+        }
+    }
+}

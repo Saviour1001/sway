@@ -16,9 +16,17 @@ pub(crate) fn gather_from_exp_inner(
     exp: &ty::TyExpressionVariant,
     return_type: TypeId,
 ) -> Result<(), ErrorEmitted> {
+    ctx.add_constraint(return_type.into());
     match exp {
-        ty::TyExpressionVariant::FunctionApplication { arguments, .. } => {
+        ty::TyExpressionVariant::FunctionApplication {
+            arguments,
+            contract_call_params,
+            ..
+        } => {
             arguments
+                .iter()
+                .try_for_each(|(_, arg)| gather_from_exp(ctx.by_ref(), handler, arg))?;
+            contract_call_params
                 .iter()
                 .try_for_each(|(_, arg)| gather_from_exp(ctx.by_ref(), handler, arg))?;
             ctx.add_constraint(exp.into());
@@ -36,11 +44,16 @@ pub(crate) fn gather_from_exp_inner(
                 .try_for_each(|field| gather_from_exp(ctx.by_ref(), handler, field))?;
         }
         ty::TyExpressionVariant::Array { contents } => {
+            todo!();
             contents
                 .iter()
                 .try_for_each(|elem| gather_from_exp(ctx.by_ref(), handler, elem))?;
         }
-        ty::TyExpressionVariant::ArrayIndex { prefix, index } => todo!(),
+        ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
+            todo!();
+            gather_from_exp(ctx.by_ref(), handler, prefix)?;
+            gather_from_exp(ctx.by_ref(), handler, index)?;
+        }
         ty::TyExpressionVariant::StructExpression {
             struct_name,
             fields,

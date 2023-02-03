@@ -1,24 +1,20 @@
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Spanned;
 
-use crate::{language::ty, monomorphize::priv_prelude::*, TypeSubstList};
+use crate::{decl_engine::DeclId, language::ty, monomorphize::priv_prelude::*, TypeSubstList};
 
 pub(crate) fn gather_from_decl(
     ctx: Context,
     handler: &Handler,
     decl: &ty::TyDeclaration,
 ) -> Result<(), ErrorEmitted> {
-    let decl_engine = ctx.decl_engine;
     match decl {
         ty::TyDeclaration::VariableDeclaration(decl) => {
-            gather_from_var_decl(ctx, handler, decl)?;
+            gather_from_exp(ctx, handler, &decl.body)?;
         }
         ty::TyDeclaration::ConstantDeclaration(_) => todo!(),
         ty::TyDeclaration::FunctionDeclaration(decl_id, type_subst_list) => {
-            let fn_decl = decl_engine
-                .get_function(decl_id.clone(), &decl_id.span())
-                .map_err(|err| handler.emit_err(err))?;
-            gather_from_fn_decl(ctx, handler, &fn_decl, type_subst_list)?;
+            gather_from_fn_decl(ctx, handler, decl_id, type_subst_list)?;
         }
         ty::TyDeclaration::TraitDeclaration(_) => todo!(),
         ty::TyDeclaration::StructDeclaration(_, _) => todo!(),
@@ -33,40 +29,33 @@ pub(crate) fn gather_from_decl(
     Ok(())
 }
 
-fn gather_from_var_decl(
-    ctx: Context,
-    handler: &Handler,
-    decl: &ty::TyVariableDeclaration,
-) -> Result<(), ErrorEmitted> {
-    gather_from_exp(ctx, handler, &decl.body)?;
-    Ok(())
-}
-
 fn gather_from_fn_decl(
     mut ctx: Context,
     handler: &Handler,
-    decl: &ty::TyFunctionDeclaration,
+    decl_id: &DeclId,
     type_subst_list: &TypeSubstList,
 ) -> Result<(), ErrorEmitted> {
+    let decl = ctx
+        .decl_engine
+        .get_function(decl_id.clone(), &decl_id.span())
+        .map_err(|err| handler.emit_err(err))?;
+
     if !type_subst_list.is_empty() {
         unimplemented!("{}", decl.name);
     }
 
-    // decl.type_parameters
-    //     .iter()
-    //     .try_for_each(|type_param| gather_from_type_param(ctx.by_ref(), handler, type_param))?;
-    decl.parameters
-        .iter()
-        .try_for_each(|param| gather_from_fn_param(ctx.by_ref(), handler, param))?;
-    gather_from_code_block(ctx.by_ref(), handler, &decl.body)?;
+    let ty::TyFunctionDeclaration {
+        body,
+        parameters,
+        return_type,
+        ..
+    } = decl;
+
+    parameters.iter().for_each(|param| {
+        ctx.add_constraint(param.type_id.into());
+    });
+    ctx.add_constraint(return_type.into());
+    gather_from_code_block(ctx.by_ref(), handler, &body)?;
 
     Ok(())
-}
-
-fn gather_from_fn_param(
-    ctx: Context,
-    handler: &Handler,
-    param: &ty::TyFunctionParameter,
-) -> Result<(), ErrorEmitted> {
-    todo!()
 }
