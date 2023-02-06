@@ -19,9 +19,9 @@ pub(super) fn gather_constraints(
     handler: &Handler,
     module: &ty::TyModule,
 ) -> Result<impl IntoIterator<Item = Constraint>, ErrorEmitted> {
-    let root_namespace = Namespace::init_root(&module.namespace);
+    let root_namespace = GatherNamespace::init_root(&module.namespace);
     let constraints = RwLock::new(HashMap::new());
-    let ctx = Context::from_root(&root_namespace, engines, &constraints);
+    let ctx = GatherContext::from_root(&root_namespace, engines, &constraints);
 
     gather_from_root(ctx, handler, module)?;
 

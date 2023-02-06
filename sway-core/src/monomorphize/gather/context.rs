@@ -1,20 +1,15 @@
 use hashbrown::{hash_map::RawEntryMut, HashMap};
 use std::sync::RwLock;
 
-use sway_types::Ident;
-
 use crate::{
     decl_engine::*, engine_threading::*, monomorphize::priv_prelude::*, namespace, TypeEngine,
 };
 
-type PathBuf = Vec<Ident>;
-
 /// Contextual state tracked and accumulated throughout gathering the trait
 /// constraints.
-#[derive(Clone, Copy)]
-pub(crate) struct Context<'a> {
+pub(crate) struct GatherContext<'a> {
     /// The namespace context accumulated throughout type-checking.
-    pub(crate) namespace: &'a Namespace<'a>,
+    pub(crate) namespace: &'a GatherNamespace<'a>,
 
     /// The type engine storing types.
     pub(crate) type_engine: &'a TypeEngine,
@@ -29,18 +24,18 @@ pub(crate) struct Context<'a> {
     constraints: &'a RwLock<HashMap<Constraint, usize>>,
 }
 
-impl<'a> Context<'a> {
+impl<'a> GatherContext<'a> {
     /// Initialize a context at the top-level of a module with its namespace.
     pub(crate) fn from_root(
-        root_namespace: &'a Namespace<'a>,
+        root_namespace: &'a GatherNamespace<'a>,
         engines: Engines<'a>,
         constraints: &'a RwLock<HashMap<Constraint, usize>>,
-    ) -> Context<'a> {
+    ) -> GatherContext<'a> {
         Self::from_module_namespace(root_namespace, engines, constraints)
     }
 
     fn from_module_namespace(
-        namespace: &'a Namespace<'a>,
+        namespace: &'a GatherNamespace<'a>,
         engines: Engines<'a>,
         constraints: &'a RwLock<HashMap<Constraint, usize>>,
     ) -> Self {
@@ -55,8 +50,8 @@ impl<'a> Context<'a> {
 
     /// Create a new context that mutably borrows the inner [Namespace] with a
     /// lifetime bound by `self`.
-    pub(crate) fn by_ref(&mut self) -> Context<'_> {
-        Context {
+    pub(crate) fn by_ref(&mut self) -> GatherContext<'_> {
+        GatherContext {
             namespace: self.namespace,
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
@@ -65,8 +60,8 @@ impl<'a> Context<'a> {
     }
 
     /// Scope the [Context] with the given [Namespace].
-    pub(crate) fn scoped(self, namespace: &'a Namespace<'a>) -> Context<'a> {
-        Context {
+    pub(crate) fn scoped(self, namespace: &'a GatherNamespace<'a>) -> GatherContext<'a> {
+        GatherContext {
             namespace,
             type_engine: self.type_engine,
             decl_engine: self.decl_engine,
@@ -94,8 +89,8 @@ impl<'a> Context<'a> {
 
 /// The set of items that represent the namespace context passed throughout
 /// gathering the trait constraints.
-#[derive(Clone, Debug)]
-pub(crate) struct Namespace<'a> {
+#[derive(Debug)]
+pub(crate) struct GatherNamespace<'a> {
     /// The `root` of the project namespace.
     pub(crate) root: &'a namespace::Module,
 
@@ -104,19 +99,19 @@ pub(crate) struct Namespace<'a> {
     pub(crate) mod_path: PathBuf,
 }
 
-impl<'a> Namespace<'a> {
+impl<'a> GatherNamespace<'a> {
     /// Initialize the namespace at its root from the given initial namespace.
-    pub(crate) fn init_root(root: &'a namespace::Module) -> Namespace<'a> {
+    pub(crate) fn init_root(root: &'a namespace::Module) -> GatherNamespace<'a> {
         let mod_path = vec![];
         Self { root, mod_path }
     }
 
-    pub(crate) fn new_with_module(&self, module: &namespace::Module) -> Namespace<'_> {
+    pub(crate) fn new_with_module(&self, module: &namespace::Module) -> GatherNamespace<'_> {
         let mut mod_path = self.mod_path.clone();
         if let Some(name) = &module.name {
             mod_path.push(name.clone());
         }
-        Namespace {
+        GatherNamespace {
             root: self.root,
             mod_path,
         }
@@ -128,7 +123,7 @@ impl<'a> Namespace<'a> {
     }
 }
 
-impl<'a> std::ops::Deref for Namespace<'a> {
+impl<'a> std::ops::Deref for GatherNamespace<'a> {
     type Target = namespace::Module;
     fn deref(&self) -> &Self::Target {
         self.module()

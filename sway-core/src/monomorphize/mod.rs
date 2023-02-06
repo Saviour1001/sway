@@ -20,7 +20,7 @@ pub(super) fn monomorphize(engines: Engines<'_>, module: &mut ty::TyModule) -> C
         let instructions = solver.into_instructions();
 
         // Use the new instructions to monomorphize the AST.
-        apply_instructions(engines, h, module, instructions)?;
+        apply_instructions(engines, h, instructions, module)?;
 
         todo!()
     })

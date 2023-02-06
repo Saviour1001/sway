@@ -3,18 +3,18 @@ use sway_types::Spanned;
 
 use crate::{decl_engine::DeclId, language::ty, monomorphize::priv_prelude::*, TypeSubstList};
 
-pub(crate) fn gather_from_decl(
-    ctx: GatherContext,
+pub(crate) fn instruct_decl(
+    ctx: InstructContext,
     handler: &Handler,
     decl: &ty::TyDeclaration,
 ) -> Result<(), ErrorEmitted> {
     match decl {
         ty::TyDeclaration::VariableDeclaration(decl) => {
-            gather_from_exp(ctx, handler, &decl.body)?;
+            instruct_exp(ctx, handler, &decl.body)?;
         }
         ty::TyDeclaration::ConstantDeclaration(_) => todo!(),
         ty::TyDeclaration::FunctionDeclaration(decl_id, type_subst_list) => {
-            gather_from_fn_decl(ctx, handler, decl_id, type_subst_list)?;
+            instruct_fn_decl(ctx, handler, decl_id, type_subst_list)?;
         }
         ty::TyDeclaration::TraitDeclaration(_) => todo!(),
         ty::TyDeclaration::StructDeclaration(_, _) => todo!(),
@@ -29,8 +29,8 @@ pub(crate) fn gather_from_decl(
     Ok(())
 }
 
-fn gather_from_fn_decl(
-    mut ctx: GatherContext,
+fn instruct_fn_decl(
+    mut ctx: InstructContext,
     handler: &Handler,
     decl_id: &DeclId,
     type_subst_list: &TypeSubstList,
@@ -55,7 +55,7 @@ fn gather_from_fn_decl(
         ctx.add_constraint(param.type_id.into());
     });
     ctx.add_constraint(return_type.into());
-    gather_from_code_block(ctx.by_ref(), handler, &body)?;
+    instruct_code_block(ctx.by_ref(), handler, &body)?;
 
     Ok(())
 }

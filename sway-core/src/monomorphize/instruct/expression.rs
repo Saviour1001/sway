@@ -2,16 +2,16 @@ use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{language::ty, monomorphize::priv_prelude::*, type_system::*};
 
-pub(crate) fn gather_from_exp(
-    ctx: GatherContext,
+pub(crate) fn instruct_exp(
+    ctx: InstructContext,
     handler: &Handler,
     exp: &ty::TyExpression,
 ) -> Result<(), ErrorEmitted> {
-    gather_from_exp_inner(ctx, handler, &exp.expression, exp.return_type)
+    instruct_exp_inner(ctx, handler, &exp.expression, exp.return_type)
 }
 
-pub(crate) fn gather_from_exp_inner(
-    mut ctx: GatherContext,
+pub(crate) fn instruct_exp_inner(
+    mut ctx: InstructContext,
     handler: &Handler,
     exp: &ty::TyExpressionVariant,
     return_type: TypeId,
@@ -25,15 +25,15 @@ pub(crate) fn gather_from_exp_inner(
         } => {
             arguments
                 .iter()
-                .try_for_each(|(_, arg)| gather_from_exp(ctx.by_ref(), handler, arg))?;
+                .try_for_each(|(_, arg)| instruct_exp(ctx.by_ref(), handler, arg))?;
             contract_call_params
                 .iter()
-                .try_for_each(|(_, arg)| gather_from_exp(ctx.by_ref(), handler, arg))?;
+                .try_for_each(|(_, arg)| instruct_exp(ctx.by_ref(), handler, arg))?;
             ctx.add_constraint(exp.into());
         }
         ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
-            gather_from_exp(ctx.by_ref(), handler, lhs)?;
-            gather_from_exp(ctx.by_ref(), handler, rhs)?;
+            instruct_exp(ctx.by_ref(), handler, lhs)?;
+            instruct_exp(ctx.by_ref(), handler, rhs)?;
         }
         ty::TyExpressionVariant::VariableExpression { .. } => {
             // NOTE: may need to do something here later
@@ -41,31 +41,31 @@ pub(crate) fn gather_from_exp_inner(
         ty::TyExpressionVariant::Tuple { fields } => {
             fields
                 .iter()
-                .try_for_each(|field| gather_from_exp(ctx.by_ref(), handler, field))?;
+                .try_for_each(|field| instruct_exp(ctx.by_ref(), handler, field))?;
         }
         ty::TyExpressionVariant::Array { contents: _ } => {
             todo!();
             // contents
             //     .iter()
-            //     .try_for_each(|elem| gather_from_exp(ctx.by_ref(), handler, elem))?;
+            //     .try_for_each(|elem| instruct_exp(ctx.by_ref(), handler, elem))?;
         }
         ty::TyExpressionVariant::ArrayIndex {
             prefix: _,
             index: _,
         } => {
             todo!();
-            // gather_from_exp(ctx.by_ref(), handler, prefix)?;
-            // gather_from_exp(ctx.by_ref(), handler, index)?;
+            // instruct_exp(ctx.by_ref(), handler, prefix)?;
+            // instruct_exp(ctx.by_ref(), handler, index)?;
         }
         ty::TyExpressionVariant::StructExpression { .. } => todo!(),
         ty::TyExpressionVariant::CodeBlock(block) => {
-            gather_from_code_block(ctx, handler, block)?;
+            instruct_code_block(ctx, handler, block)?;
         }
         ty::TyExpressionVariant::IfExp { .. } => todo!(),
         ty::TyExpressionVariant::AsmExpression { .. } => todo!(),
         ty::TyExpressionVariant::StructFieldAccess { .. } => todo!(),
         ty::TyExpressionVariant::TupleElemAccess { prefix, .. } => {
-            gather_from_exp(ctx, handler, prefix)?;
+            instruct_exp(ctx, handler, prefix)?;
         }
         ty::TyExpressionVariant::EnumInstantiation { .. } => todo!(),
         ty::TyExpressionVariant::AbiCast { .. } => todo!(),
@@ -73,14 +73,14 @@ pub(crate) fn gather_from_exp_inner(
         ty::TyExpressionVariant::IntrinsicFunction(_) => todo!(),
         ty::TyExpressionVariant::AbiName(_) => todo!(),
         ty::TyExpressionVariant::EnumTag { exp } => {
-            gather_from_exp(ctx.by_ref(), handler, exp)?;
+            instruct_exp(ctx.by_ref(), handler, exp)?;
         }
         ty::TyExpressionVariant::UnsafeDowncast { .. } => todo!(),
         ty::TyExpressionVariant::WhileLoop { .. } => todo!(),
         ty::TyExpressionVariant::Reassignment(_) => todo!(),
         ty::TyExpressionVariant::StorageReassignment(_) => todo!(),
         ty::TyExpressionVariant::Return(exp) => {
-            gather_from_exp(ctx.by_ref(), handler, exp)?;
+            instruct_exp(ctx.by_ref(), handler, exp)?;
         }
         ty::TyExpressionVariant::Literal(_) => {}
         ty::TyExpressionVariant::Break => {}

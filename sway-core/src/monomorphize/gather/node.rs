@@ -3,7 +3,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use crate::{language::ty, monomorphize::priv_prelude::*};
 
 pub(crate) fn gather_from_node(
-    ctx: Context,
+    ctx: GatherContext,
     handler: &Handler,
     node: &ty::TyAstNodeContent,
 ) -> Result<(), ErrorEmitted> {
