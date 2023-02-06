@@ -690,6 +690,7 @@ impl AsRawSlice for Bytes {
     }
 }
 
+/// Methods for converting between the `Bytes` and the `raw_slice` types.
 impl From<raw_slice> for Bytes {
     fn from(slice: raw_slice) -> Bytes {
         let buf = RawBytes {
@@ -707,7 +708,6 @@ impl From<raw_slice> for Bytes {
     }
 }
 
-////////////////////////////////////////////////////////////////////
 /// Methods for converting between the `Bytes` and the `b256` types.
 impl From<b256> for Bytes {
     fn from(b: b256) -> Bytes {
