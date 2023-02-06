@@ -1,11 +1,17 @@
 pub(super) use super::{
     constraint::*,
-    context::{Context, Namespace},
     gather::{
-        code_block::gather_from_code_block, declaration::gather_from_decl,
-        expression::gather_from_exp, gather_constraints, node::gather_from_node,
-        type_annotations::gather_from_type_param,
+        code_block::gather_from_code_block,
+        context::{Context, Namespace},
+        declaration::gather_from_decl,
+        expression::gather_from_exp,
+        gather_constraints,
+        node::gather_from_node,
     },
-    instructions::Instructions,
-    solver::Solver,
+    instruct::apply_instructions,
+    instructions::Instruction,
+    solve::{
+        instruction_result::InstructionResult, iteration_report::IterationReport, solver::Solver,
+        ConstraintPQ, ConstraintWrapper,
+    },
 };

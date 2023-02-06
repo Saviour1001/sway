@@ -1,21 +1,29 @@
 pub(crate) mod code_block;
+pub(crate) mod context;
 pub(crate) mod declaration;
 pub(crate) mod expression;
 pub(crate) mod module;
 pub(crate) mod node;
-pub(crate) mod type_annotations;
 
+use std::sync::RwLock;
+
+use hashbrown::HashMap;
 use sway_error::handler::{ErrorEmitted, Handler};
 
-use crate::{language::ty, monomorphize::priv_prelude::*};
+use crate::{language::ty, monomorphize::priv_prelude::*, Engines};
 
 use self::module::gather_from_root;
 
 pub(super) fn gather_constraints(
-    ctx: Context,
+    engines: Engines<'_>,
     handler: &Handler,
     module: &ty::TyModule,
-) -> Result<(), ErrorEmitted> {
+) -> Result<impl IntoIterator<Item = Constraint>, ErrorEmitted> {
+    let root_namespace = Namespace::init_root(&module.namespace);
+    let constraints = RwLock::new(HashMap::new());
+    let ctx = Context::from_root(&root_namespace, engines, &constraints);
+
     gather_from_root(ctx, handler, module)?;
-    Ok(())
+
+    Ok(constraints.into_inner().unwrap().into_keys())
 }

@@ -1,13 +1,9 @@
 mod constraint;
-mod context;
 mod gather;
+mod instruct;
 mod instructions;
 mod priv_prelude;
-mod solver;
-
-use std::{collections::BTreeSet, sync::RwLock};
-
-use hashbrown::HashMap;
+mod solve;
 
 use crate::{engine_threading::*, language::ty, CompileResult};
 
@@ -15,32 +11,17 @@ use priv_prelude::*;
 
 pub(super) fn monomorphize(engines: Engines<'_>, module: &mut ty::TyModule) -> CompileResult<()> {
     CompileResult::with_handler(|h| {
-        let root_namespace = Namespace::init_root(&module.namespace);
-        let constraints = RwLock::new(HashMap::new());
-        let ctx = Context::from_root(&root_namespace, engines, &constraints);
+        // Gather the constraints from the typed AST.
+        let constraints = gather_constraints(engines, h, module)?;
 
-        gather_constraints(ctx, h, module)?;
+        // Solve the constraints and get back instructions from the solver.
+        let mut solver = Solver::new(engines);
+        solver.solve(h, constraints)?;
+        let instructions = solver.into_instructions();
 
-        let constraints = order_constraints(engines, constraints.into_inner().unwrap());
-        let mut solver = Solver::new(engines, constraints);
-        let instructions = solver.solve(h)?;
+        // Use the new instructions to monomorphize the AST.
+        apply_instructions(engines, h, module, instructions)?;
 
         todo!()
     })
-}
-
-fn order_constraints(
-    engines: Engines<'_>,
-    constraints: HashMap<Constraint, usize>,
-) -> Vec<Constraint> {
-    let mut set = BTreeSet::new();
-    for (constraint, _) in constraints.into_iter() {
-        set.insert(WithEngines {
-            engines,
-            thing: constraint,
-        });
-    }
-    set.into_iter()
-        .map(|with_engines| with_engines.thing)
-        .collect()
 }

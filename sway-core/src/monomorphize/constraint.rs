@@ -14,7 +14,9 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub(crate) enum Constraint {
+    /// Type use.
     Ty(TypeId),
+    /// Function call.
     FnCall {
         call_path: CallPath,
         decl_id: DeclId,
