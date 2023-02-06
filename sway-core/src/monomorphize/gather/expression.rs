@@ -43,73 +43,40 @@ pub(crate) fn gather_from_exp_inner(
                 .iter()
                 .try_for_each(|field| gather_from_exp(ctx.by_ref(), handler, field))?;
         }
-        ty::TyExpressionVariant::Array { contents } => {
+        ty::TyExpressionVariant::Array { contents: _ } => {
             todo!();
-            contents
-                .iter()
-                .try_for_each(|elem| gather_from_exp(ctx.by_ref(), handler, elem))?;
+            // contents
+            //     .iter()
+            //     .try_for_each(|elem| gather_from_exp(ctx.by_ref(), handler, elem))?;
         }
-        ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
+        ty::TyExpressionVariant::ArrayIndex {
+            prefix: _,
+            index: _,
+        } => {
             todo!();
-            gather_from_exp(ctx.by_ref(), handler, prefix)?;
-            gather_from_exp(ctx.by_ref(), handler, index)?;
+            // gather_from_exp(ctx.by_ref(), handler, prefix)?;
+            // gather_from_exp(ctx.by_ref(), handler, index)?;
         }
-        ty::TyExpressionVariant::StructExpression {
-            struct_name,
-            fields,
-            span,
-            type_binding,
-        } => todo!(),
+        ty::TyExpressionVariant::StructExpression { .. } => todo!(),
         ty::TyExpressionVariant::CodeBlock(block) => {
             gather_from_code_block(ctx, handler, block)?;
         }
-        ty::TyExpressionVariant::IfExp {
-            condition,
-            then,
-            r#else,
-        } => todo!(),
-        ty::TyExpressionVariant::AsmExpression {
-            registers,
-            body,
-            returns,
-            whole_block_span,
-        } => todo!(),
-        ty::TyExpressionVariant::StructFieldAccess {
-            prefix,
-            field_to_access,
-            field_instantiation_span,
-            resolved_type_of_parent,
-        } => todo!(),
-        ty::TyExpressionVariant::TupleElemAccess {
-            prefix,
-            elem_to_access_num,
-            resolved_type_of_parent,
-            elem_to_access_span,
-        } => {
+        ty::TyExpressionVariant::IfExp { .. } => todo!(),
+        ty::TyExpressionVariant::AsmExpression { .. } => todo!(),
+        ty::TyExpressionVariant::StructFieldAccess { .. } => todo!(),
+        ty::TyExpressionVariant::TupleElemAccess { prefix, .. } => {
             gather_from_exp(ctx, handler, prefix)?;
         }
-        ty::TyExpressionVariant::EnumInstantiation {
-            type_id,
-            variant_name,
-            tag,
-            contents,
-            enum_instantiation_span,
-            variant_instantiation_span,
-            type_binding,
-        } => todo!(),
-        ty::TyExpressionVariant::AbiCast {
-            abi_name,
-            address,
-            span,
-        } => todo!(),
+        ty::TyExpressionVariant::EnumInstantiation { .. } => todo!(),
+        ty::TyExpressionVariant::AbiCast { .. } => todo!(),
         ty::TyExpressionVariant::StorageAccess(_) => todo!(),
         ty::TyExpressionVariant::IntrinsicFunction(_) => todo!(),
         ty::TyExpressionVariant::AbiName(_) => todo!(),
         ty::TyExpressionVariant::EnumTag { exp } => {
             gather_from_exp(ctx.by_ref(), handler, exp)?;
         }
-        ty::TyExpressionVariant::UnsafeDowncast { exp, variant } => todo!(),
-        ty::TyExpressionVariant::WhileLoop { condition, body } => todo!(),
+        ty::TyExpressionVariant::UnsafeDowncast { .. } => todo!(),
+        ty::TyExpressionVariant::WhileLoop { .. } => todo!(),
         ty::TyExpressionVariant::Reassignment(_) => todo!(),
         ty::TyExpressionVariant::StorageReassignment(_) => todo!(),
         ty::TyExpressionVariant::Return(exp) => {
