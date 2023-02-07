@@ -16,7 +16,7 @@ pub(crate) fn instruct_exp_inner(
     exp: &ty::TyExpressionVariant,
     return_type: TypeId,
 ) -> Result<(), ErrorEmitted> {
-    ctx.add_constraint(return_type.into());
+    // NOTE: todo here
     match exp {
         ty::TyExpressionVariant::FunctionApplication {
             arguments,
@@ -29,7 +29,7 @@ pub(crate) fn instruct_exp_inner(
             contract_call_params
                 .iter()
                 .try_for_each(|(_, arg)| instruct_exp(ctx.by_ref(), handler, arg))?;
-            ctx.add_constraint(exp.into());
+            // NOTE: todo here
         }
         ty::TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
             instruct_exp(ctx.by_ref(), handler, lhs)?;

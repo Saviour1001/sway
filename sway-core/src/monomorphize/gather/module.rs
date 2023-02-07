@@ -21,7 +21,7 @@ pub(crate) fn gather_from_module(
     handler: &Handler,
     module: &ty::TyModule,
 ) -> Result<(), ErrorEmitted> {
-    let module_namespace = GatherNamespace::new_with_module(ctx.namespace, &module.namespace);
+    let module_namespace = ctx.namespace.new_with_module(&module.namespace);
     let mut ctx = ctx.scoped(&module_namespace);
     for (_, submod) in module.submodules_recursive() {
         gather_from_module(ctx.by_ref(), handler, &submod.module)?;

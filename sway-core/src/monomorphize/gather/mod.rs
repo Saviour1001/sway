@@ -12,8 +12,6 @@ use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{language::ty, monomorphize::priv_prelude::*, Engines};
 
-use self::module::gather_from_root;
-
 pub(super) fn gather_constraints(
     engines: Engines<'_>,
     handler: &Handler,

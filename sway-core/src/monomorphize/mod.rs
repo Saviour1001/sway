@@ -22,6 +22,6 @@ pub(super) fn monomorphize(engines: Engines<'_>, module: &mut ty::TyModule) -> C
         // Use the new instructions to monomorphize the AST.
         apply_instructions(engines, h, instructions, module)?;
 
-        todo!()
+        Ok(())
     })
 }

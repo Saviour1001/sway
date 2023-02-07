@@ -10,12 +10,13 @@ pub(super) use super::{
         declaration::gather_from_decl,
         expression::gather_from_exp,
         gather_constraints,
+        module::gather_from_root,
         node::gather_from_node,
     },
     instruct::{
-        apply_instructions,
-        context::{InstructContext, InstructNamespace},
-        // namespace::{context::InstructContext, ModuleName, Path, PathBuf},
+        apply_instructions, code_block::instruct_code_block, context::InstructContext,
+        declaration::instruct_decl, expression::instruct_exp, module::instruct_root,
+        node::instruct_node,
     },
     instructions::Instruction,
     solve::{

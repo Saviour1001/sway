@@ -51,10 +51,7 @@ fn instruct_fn_decl(
         ..
     } = decl;
 
-    parameters.iter().for_each(|param| {
-        ctx.add_constraint(param.type_id.into());
-    });
-    ctx.add_constraint(return_type.into());
+    // NOTE: todo here
     instruct_code_block(ctx.by_ref(), handler, &body)?;
 
     Ok(())

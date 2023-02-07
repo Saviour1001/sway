@@ -31,6 +31,16 @@ pub struct SubmodulesRecursive<'module> {
     )>,
 }
 
+// /// Iterator type for iterating over modules mutably depth-first.
+// ///
+// /// Used rather than `impl Iterator` to enable recursive submodule iteration.
+// //
+// // NOTE: https://aloso.github.io/2021/03/09/creating-an-iterator
+// pub struct SubmodulesRecursiveMut<'module> {
+//     children: &'module mut [TyModule],
+//     parent: Option<Box<SubmodulesRecursiveMut<'module>>>,
+// }
+
 impl TyModule {
     /// An iterator yielding all submodules recursively, depth-first.
     pub fn submodules_recursive(&self) -> SubmodulesRecursive {
@@ -39,6 +49,13 @@ impl TyModule {
             current: None,
         }
     }
+
+    // pub fn submodules_recursive_mut(&mut self) -> SubmodulesRecursiveMut {
+    //     SubmodulesRecursiveMut {
+    //         children: std::slice::from_mut(self),
+    //         parent: None,
+    //     }
+    // }
 
     /// All test functions within this module.
     pub fn test_fns<'a: 'b, 'b>(
@@ -85,3 +102,29 @@ impl<'module> Iterator for SubmodulesRecursive<'module> {
         }
     }
 }
+
+// impl<'module> Iterator for SubmodulesRecursiveMut<'module> {
+//     type Item = &'module mut TyModule;
+
+//     fn next(&mut self) -> Option<Self::Item> {
+//         match self.children.get(0) {
+//             None => match self.parent.take() {
+//                 Some(parent) => {
+//                     *self = *parent;
+//                     self.next()
+//                 }
+//                 None => None,
+//             },
+//             Some(module) if module.submodules.is_empty() => {
+//                 if self.children.is_empty() {
+//                     None
+//                 } else {
+//                     let (first, rest) = self.children.split_first_mut().unwrap();
+//                     self.children = rest;
+//                     Some(first)
+//                 }
+//             }
+//             Some(module) => todo!(),
+//         }
+//     }
+// }
