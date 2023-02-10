@@ -17,7 +17,7 @@ pub struct TyConstantDeclaration {
     pub return_type: TypeId,
     pub is_configurable: bool,
     pub attributes: transform::AttributesMap,
-    pub type_ascription_span: Option<Span>,
+    pub type_argument: TypeArgument,
     pub span: Span,
 }
 
@@ -43,10 +43,10 @@ impl HashWithEngines for TyConstantDeclaration {
             visibility,
             return_type,
             is_configurable,
+            type_argument,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             attributes: _,
-            type_ascription_span: _,
             span: _,
         } = self;
         let type_engine = engines.te();
@@ -55,5 +55,6 @@ impl HashWithEngines for TyConstantDeclaration {
         visibility.hash(state);
         type_engine.get(*return_type).hash(state, engines);
         is_configurable.hash(state);
+        type_argument.hash(state, engines);
     }
 }

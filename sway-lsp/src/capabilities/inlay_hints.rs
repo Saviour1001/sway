@@ -48,15 +48,14 @@ pub(crate) fn inlay_hints(
         .filter_map(|(_, token)| {
             token.typed.as_ref().and_then(|t| match t {
                 TypedAstToken::TypedDeclaration(TyDeclaration::VariableDeclaration(var_decl)) => {
-                    match var_decl.type_ascription_span {
-                        Some(_) => None,
-                        None => {
-                            let var_range = get_range_from_span(&var_decl.name.span());
-                            if var_range.start >= range.start && var_range.end <= range.end {
-                                Some(var_decl.clone())
-                            } else {
-                                None
-                            }
+                    if var_decl.has_type_ascription {
+                        None
+                    } else {
+                        let var_range = get_range_from_span(&var_decl.name.span());
+                        if var_range.start >= range.start && var_range.end <= range.end {
+                            Some(var_decl.clone())
+                        } else {
+                            None
                         }
                     }
                 }
@@ -64,7 +63,7 @@ pub(crate) fn inlay_hints(
             })
         })
         .filter_map(|var| {
-            let type_info = type_engine.get(var.type_ascription);
+            let type_info = type_engine.get(var.type_ascription.type_id);
             match type_info {
                 TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => None,
                 _ => Some(var),

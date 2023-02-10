@@ -424,10 +424,6 @@ fn item_fn_to_function_declaration(
     attributes: AttributesMap,
 ) -> Result<FunctionDeclaration, ErrorEmitted> {
     let span = item_fn.span();
-    let return_type_span = match &item_fn.fn_signature.return_type_opt {
-        Some((_right_arrow_token, ty)) => ty.span(),
-        None => item_fn.fn_signature.span(),
-    };
     Ok(FunctionDeclaration {
         purity: get_attributed_purity(context, handler, &attributes)?,
         attributes,
@@ -441,9 +437,13 @@ fn item_fn_to_function_declaration(
             item_fn.fn_signature.arguments.into_inner(),
         )?,
         span,
-        return_type: match item_fn.fn_signature.return_type_opt {
-            Some((_right_arrow, ty)) => ty_to_type_info(context, handler, engines, ty)?,
-            None => TypeInfo::Tuple(Vec::new()),
+        return_type: if let Some((_right_arrow, ty)) = item_fn.fn_signature.return_type_opt {
+            ty_to_type_argument(context, handler, engines, ty)?
+        } else {
+            let type_engine = engines.te();
+            let decl_engine = engines.de();
+            let type_id = type_engine.insert(decl_engine, TypeInfo::Unknown);
+            TypeArgument::no_spans(type_id)
         },
         type_parameters: generic_params_opt_to_type_parameters(
             context,
@@ -452,7 +452,6 @@ fn item_fn_to_function_declaration(
             item_fn.fn_signature.generics,
             item_fn.fn_signature.where_clause_opt,
         )?,
-        return_type_span,
     })
 }
 
@@ -720,23 +719,18 @@ pub(crate) fn item_const_to_constant_declaration(
     attributes: AttributesMap,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
     let span = item_const.span();
-    let (type_ascription, type_ascription_span) = match item_const.ty_opt {
-        Some((_colon_token, ty)) => {
-            let type_ascription = ty_to_type_info(context, handler, engines, ty.clone())?;
-            let type_ascription_span = if let Ty::Path(path_type) = &ty {
-                path_type.prefix.name.span()
-            } else {
-                ty.span()
-            };
-            (type_ascription, Some(type_ascription_span))
-        }
-        None => (TypeInfo::Unknown, None),
+    let type_argument = if let Some((_colon_token, ty)) = item_const.ty_opt {
+        ty_to_type_argument(context, handler, engines, ty)?
+    } else {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
+        let type_id = type_engine.insert(decl_engine, TypeInfo::Unknown);
+        TypeArgument::no_spans(type_id)
     };
 
     Ok(ConstantDeclaration {
         name: item_const.name,
-        type_ascription,
-        type_ascription_span,
+        type_ascription: type_argument,
         value: expr_to_expression(context, handler, engines, item_const.expr)?,
         visibility: pub_token_opt_to_visibility(item_const.visibility),
         is_configurable: false,
@@ -1031,6 +1025,7 @@ fn fn_args_to_function_parameters(
                 mutability_span,
                 type_info: TypeInfo::SelfType,
                 type_span: self_token.span(),
+                type_name_spans: None,
             }];
             if let Some((_comma_token, args)) = args_opt {
                 for arg in args {
@@ -1642,6 +1637,14 @@ fn expr_to_expression(
                     })
                     .collect::<Result<_, _>>()?
             };
+
+            let type_ascription = {
+                let type_engine = engines.te();
+                let decl_engine = engines.de();
+                let type_id = type_engine.insert(decl_engine, TypeInfo::Unknown);
+                TypeArgument::no_spans(type_id)
+            };
+
             Expression {
                 kind: ExpressionKind::CodeBlock(CodeBlock {
                     contents: vec![
@@ -1649,8 +1652,8 @@ fn expr_to_expression(
                             content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                                 VariableDeclaration {
                                     name: var_decl_name,
-                                    type_ascription: TypeInfo::Unknown,
-                                    type_ascription_span: None,
+                                    type_ascription,
+                                    has_type_ascription: false,
                                     is_mutable: false,
                                     body: value,
                                 },
@@ -2074,16 +2077,12 @@ fn configurable_field_to_constant_declaration(
     attributes: AttributesMap,
 ) -> Result<ConstantDeclaration, ErrorEmitted> {
     let span = configurable_field.name.span();
-    let type_ascription_span = if let Ty::Path(path_type) = &configurable_field.ty {
-        path_type.prefix.name.span()
-    } else {
-        configurable_field.ty.span()
-    };
+    let type_argument =
+        ty_to_type_argument(context, handler, engines, configurable_field.ty.clone())?;
 
     Ok(ConstantDeclaration {
         name: configurable_field.name,
-        type_ascription: ty_to_type_info(context, handler, engines, configurable_field.ty)?,
-        type_ascription_span: Some(type_ascription_span),
+        type_ascription: type_argument,
         value: expr_to_expression(context, handler, engines, configurable_field.initializer)?,
         visibility: Visibility::Public,
         is_configurable: true,
@@ -2173,8 +2172,9 @@ fn fn_arg_to_function_parameter(
         is_reference: reference.is_some(),
         is_mutable: mutable.is_some(),
         mutability_span,
-        type_info: ty_to_type_info(context, handler, engines, fn_arg.ty)?,
+        type_name_spans: ty_to_span_tree(&fn_arg.ty)?,
         type_span,
+        type_info: ty_to_type_info(context, handler, engines, fn_arg.ty)?,
     };
     Ok(function_parameter)
 }
@@ -2834,20 +2834,20 @@ fn statement_let_to_ast_nodes(
                     let error = ConvertParseTreeError::RefVariablesNotSupported { span };
                     return Err(handler.emit_err(error.into()));
                 }
-                let (type_ascription, type_ascription_span) = match ty_opt {
-                    Some(ty) => {
-                        let type_ascription_span = ty.span();
-                        let type_ascription = ty_to_type_info(context, handler, engines, ty)?;
-                        (type_ascription, Some(type_ascription_span))
-                    }
-                    None => (TypeInfo::Unknown, None),
+                let (has_type_ascription, type_argument) = if let Some(ty) = ty_opt {
+                    (true, ty_to_type_argument(context, handler, engines, ty)?)
+                } else {
+                    let type_engine = engines.te();
+                    let decl_engine = engines.de();
+                    let type_id = type_engine.insert(decl_engine, TypeInfo::Unknown);
+                    (false, TypeArgument::no_spans(type_id))
                 };
                 let ast_node = AstNode {
                     content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
                         VariableDeclaration {
                             name,
-                            type_ascription,
-                            type_ascription_span,
+                            has_type_ascription,
+                            type_ascription: type_argument,
                             body: expression,
                             is_mutable: mutable.is_some(),
                         },
@@ -2885,21 +2885,20 @@ fn statement_let_to_ast_nodes(
                 // Parse the type ascription and the type ascription span.
                 // In the event that the user did not provide a type ascription,
                 // it is set to TypeInfo::Unknown and the span to None.
-                let (type_ascription, type_ascription_span) = match &ty_opt {
-                    Some(ty) => {
-                        let type_ascription_span = ty.span();
-                        let type_ascription =
-                            ty_to_type_info(context, handler, engines, ty.clone())?;
-                        (type_ascription, Some(type_ascription_span))
-                    }
-                    None => (TypeInfo::Unknown, None),
+                let (has_type_ascription, type_argument) = if let Some(ty) = ty_opt {
+                    (true, ty_to_type_argument(context, handler, engines, ty)?)
+                } else {
+                    let type_engine = engines.te();
+                    let decl_engine = engines.de();
+                    let type_id = type_engine.insert(decl_engine, TypeInfo::Unknown);
+                    (false, TypeArgument::no_spans(type_id))
                 };
 
                 // Save the destructure to the new name as a new variable declaration
                 let save_body_first = VariableDeclaration {
                     name: destructure_name.clone(),
-                    type_ascription,
-                    type_ascription_span,
+                    type_ascription: type_argument,
+                    has_type_ascription,
                     body: expression,
                     is_mutable: false,
                 };
@@ -2974,21 +2973,23 @@ fn statement_let_to_ast_nodes(
                 // Parse the type ascription and the type ascription span.
                 // In the event that the user did not provide a type ascription,
                 // it is set to TypeInfo::Unknown and the span to None.
-                let (type_ascription, type_ascription_span) = match &ty_opt {
-                    Some(ty) => {
-                        let type_ascription_span = ty.span();
-                        let type_ascription =
-                            ty_to_type_info(context, handler, engines, ty.clone())?;
-                        (type_ascription, Some(type_ascription_span))
-                    }
-                    None => (TypeInfo::Unknown, None),
+                let (has_type_ascription, type_argument) = if let Some(ty) = &ty_opt {
+                    (
+                        true,
+                        ty_to_type_argument(context, handler, engines, ty.clone())?,
+                    )
+                } else {
+                    let type_engine = engines.te();
+                    let decl_engine = engines.de();
+                    let type_id = type_engine.insert(decl_engine, TypeInfo::Unknown);
+                    (false, TypeArgument::no_spans(type_id))
                 };
 
                 // Save the tuple to the new name as a new variable declaration.
                 let save_body_first = VariableDeclaration {
                     name: tuple_name.clone(),
-                    type_ascription,
-                    type_ascription_span,
+                    type_ascription: type_argument,
+                    has_type_ascription,
                     body: expression,
                     is_mutable: false,
                 };

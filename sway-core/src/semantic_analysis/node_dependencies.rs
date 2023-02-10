@@ -293,18 +293,18 @@ impl Dependencies {
     fn gather_from_decl(self, type_engine: &TypeEngine, decl: &Declaration) -> Self {
         match decl {
             Declaration::VariableDeclaration(VariableDeclaration {
-                type_ascription,
+                type_ascription: type_argument,
                 body,
                 ..
             }) => self
-                .gather_from_typeinfo(type_engine, type_ascription)
+                .gather_from_typeinfo(type_engine, &type_engine.get(type_argument.type_id))
                 .gather_from_expr(type_engine, body),
             Declaration::ConstantDeclaration(ConstantDeclaration {
-                type_ascription,
+                type_ascription: type_argument,
                 value,
                 ..
             }) => self
-                .gather_from_typeinfo(type_engine, type_ascription)
+                .gather_from_typeinfo(type_engine, &type_engine.get(type_argument.type_id))
                 .gather_from_expr(type_engine, value),
             Declaration::FunctionDeclaration(fn_decl) => {
                 self.gather_from_fn_decl(type_engine, fn_decl)
@@ -399,7 +399,7 @@ impl Dependencies {
         self.gather_from_iter(parameters.iter(), |deps, param| {
             deps.gather_from_typeinfo(type_engine, &param.type_info)
         })
-        .gather_from_typeinfo(type_engine, return_type)
+        .gather_from_typeinfo(type_engine, &type_engine.get(return_type.type_id))
         .gather_from_block(type_engine, body)
         .gather_from_type_parameters(type_parameters)
     }

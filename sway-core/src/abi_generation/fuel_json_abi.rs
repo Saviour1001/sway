@@ -597,34 +597,40 @@ impl TyFunctionDeclaration {
             .parameters
             .iter()
             .map(|x| program_abi::TypeDeclaration {
-                type_id: x.initial_type_id.index(),
-                type_field: x.initial_type_id.get_json_type_str(type_engine, x.type_id),
-                components: x.initial_type_id.get_json_type_components(
+                type_id: x.type_argument.initial_type_id.index(),
+                type_field: x
+                    .type_argument
+                    .initial_type_id
+                    .get_json_type_str(type_engine, x.type_argument.type_id),
+                components: x.type_argument.initial_type_id.get_json_type_components(
                     type_engine,
                     types,
-                    x.type_id,
+                    x.type_argument.type_id,
                 ),
-                type_parameters: x
-                    .type_id
-                    .get_json_type_parameters(type_engine, types, x.type_id),
+                type_parameters: x.type_argument.type_id.get_json_type_parameters(
+                    type_engine,
+                    types,
+                    x.type_argument.type_id,
+                ),
             })
             .collect::<Vec<_>>();
 
         // The single `program_abi::TypeDeclaration` needed for the output
         let output_type = program_abi::TypeDeclaration {
-            type_id: self.initial_return_type.index(),
+            type_id: self.return_type.initial_type_id.index(),
             type_field: self
-                .initial_return_type
-                .get_json_type_str(type_engine, self.return_type),
-            components: self.return_type.get_json_type_components(
+                .return_type
+                .initial_type_id
+                .get_json_type_str(type_engine, self.return_type.type_id),
+            components: self.return_type.type_id.get_json_type_components(
                 type_engine,
                 types,
-                self.return_type,
+                self.return_type.type_id,
             ),
-            type_parameters: self.return_type.get_json_type_parameters(
+            type_parameters: self.return_type.type_id.get_json_type_parameters(
                 type_engine,
                 types,
-                self.return_type,
+                self.return_type.type_id,
             ),
         };
 
@@ -640,21 +646,21 @@ impl TyFunctionDeclaration {
                 .iter()
                 .map(|x| program_abi::TypeApplication {
                     name: x.name.to_string(),
-                    type_id: x.initial_type_id.index(),
-                    type_arguments: x.initial_type_id.get_json_type_arguments(
+                    type_id: x.type_argument.initial_type_id.index(),
+                    type_arguments: x.type_argument.initial_type_id.get_json_type_arguments(
                         type_engine,
                         types,
-                        x.type_id,
+                        x.type_argument.type_id,
                     ),
                 })
                 .collect(),
             output: program_abi::TypeApplication {
                 name: "".to_string(),
-                type_id: self.initial_return_type.index(),
-                type_arguments: self.initial_return_type.get_json_type_arguments(
+                type_id: self.return_type.initial_type_id.index(),
+                type_arguments: self.return_type.initial_type_id.get_json_type_arguments(
                     type_engine,
                     types,
-                    self.return_type,
+                    self.return_type.type_id,
                 ),
             },
             attributes: generate_json_abi_attributes_map(&self.attributes),

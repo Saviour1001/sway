@@ -28,6 +28,7 @@ impl ty::TyFunctionParameter {
             mutability_span,
             type_info,
             type_span,
+            type_name_spans,
         } = parameter;
 
         let initial_type_id = type_engine.insert(decl_engine, type_info);
@@ -60,9 +61,12 @@ impl ty::TyFunctionParameter {
             is_reference,
             is_mutable,
             mutability_span,
-            type_id,
-            initial_type_id,
-            type_span,
+            type_argument: TypeArgument {
+                type_id,
+                initial_type_id,
+                span: type_span,
+                name_spans: type_name_spans,
+            },
         };
 
         insert_into_namespace(ctx, &typed_parameter);
@@ -87,6 +91,7 @@ impl ty::TyFunctionParameter {
             mutability_span,
             type_info,
             type_span,
+            type_name_spans,
         } = parameter;
 
         let initial_type_id = type_engine.insert(decl_engine, type_info);
@@ -110,9 +115,12 @@ impl ty::TyFunctionParameter {
             is_reference,
             is_mutable,
             mutability_span,
-            type_id,
-            initial_type_id,
-            type_span,
+            type_argument: TypeArgument {
+                type_id,
+                initial_type_id,
+                span: type_span,
+                name_spans: type_name_spans,
+            },
         };
 
         ok(typed_parameter, warnings, errors)
@@ -126,16 +134,16 @@ fn insert_into_namespace(ctx: TypeCheckContext, typed_parameter: &ty::TyFunction
             name: typed_parameter.name.clone(),
             body: ty::TyExpression {
                 expression: ty::TyExpressionVariant::FunctionParameter,
-                return_type: typed_parameter.type_id,
+                return_type: typed_parameter.type_argument.type_id,
                 span: typed_parameter.name.span(),
             },
             mutability: ty::VariableMutability::new_from_ref_mut(
                 typed_parameter.is_reference,
                 typed_parameter.is_mutable,
             ),
-            return_type: typed_parameter.type_id,
-            type_ascription: typed_parameter.type_id,
-            type_ascription_span: Some(typed_parameter.type_span.clone()),
+            return_type: typed_parameter.type_argument.type_id,
+            type_ascription: typed_parameter.type_argument.clone(),
+            has_type_ascription: true,
         })),
     );
 }
